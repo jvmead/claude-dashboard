@@ -1,6 +1,6 @@
 # Claude Code Session Dashboard — Design
 
-**Status:** Tabled 2026-07-06 (design approved, implementation not started). Resume from here.
+**Status:** Tabled 2026-07-06. **Superseded in part by `2026-10-18-session-dashboard-revised-design.md`. Read that first.**
 
 ## Goal
 Local web dashboard to monitor and manage Claude Code sessions on this WSL2 machine.

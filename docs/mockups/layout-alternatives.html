@@ -1,0 +1,69 @@
+<style>
+  .st{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;color:#fff}
+  .perm{background:#d9480f}.turn{background:#e8a200}.wait{background:#5c7cfa}.work{background:#2f9e44}
+  .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:12px}
+  .col{border:1px solid rgba(128,128,128,.3);border-radius:6px;padding:6px;min-height:90px}
+  .col h4{margin:0 0 6px;font-size:11px;text-transform:uppercase;opacity:.7}
+  .tk{border-radius:4px;padding:4px 6px;margin-bottom:4px;background:rgba(128,128,128,.15)}
+  .lanes{font-size:12px}
+  .lane{display:grid;grid-template-columns:120px 1fr;align-items:center;margin-bottom:5px}
+  .track{position:relative;height:16px;background:rgba(128,128,128,.12);border-radius:3px}
+  .seg{position:absolute;top:2px;height:12px;border-radius:2px}
+  .strip{display:flex;gap:6px;font-size:12px;align-items:center;flex-wrap:wrap}
+  .pill{padding:4px 8px;border-radius:12px;color:#fff;font-weight:600}
+  .note{font-size:12px;opacity:.75;margin-top:4px}
+</style>
+
+<h2>Other layouts people use</h2>
+<p class="subtitle">A (your pick) is the usual one. These three are the main alternatives. Some work better as a second tab than as a replacement.</p>
+
+<div class="options">
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Columns by state (kanban). Agent View does this</h3>
+      <div class="mockup"><div class="mockup-body">
+        <div class="cols">
+          <div class="col"><h4>Needs approval</h4><div class="tk">web-app<br><small>pytest tests/</small></div></div>
+          <div class="col"><h4>Your turn</h4><div class="tk">data-pipeline<br><small>"keep old loader?"</small></div></div>
+          <div class="col"><h4>Waiting</h4><div class="tk">side-project · 2/3</div></div>
+          <div class="col"><h4>Working</h4><div class="tk">analysis-scratch</div></div>
+        </div>
+      </div></div>
+      <p class="note">Very clear at a glance, but needs width, and the subagent tree has no natural place.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="d" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>Swim-lane timeline (one lane per agent)</h3>
+      <div class="mockup"><div class="mockup-body lanes">
+        <div class="lane"><b>side-project</b><div class="track"><div class="seg" style="left:0;width:30%;background:#2f9e44"></div><div class="seg" style="left:30%;width:70%;background:#5c7cfa"></div></div></div>
+        <div class="lane">&nbsp;├ code-reviewer<div class="track"><div class="seg" style="left:30%;width:35%;background:#2f9e44"></div></div></div>
+        <div class="lane">&nbsp;├ python-reviewer<div class="track"><div class="seg" style="left:30%;width:70%;background:#2f9e44"></div></div></div>
+        <div class="lane">&nbsp;└ Explore<div class="track"><div class="seg" style="left:55%;width:45%;background:#2f9e44"></div></div></div>
+        <div class="lane"><b>web-app</b><div class="track"><div class="seg" style="left:0;width:85%;background:#2f9e44"></div><div class="seg" style="left:85%;width:15%;background:#d9480f"></div></div></div>
+        <div class="note">← 20 min ago ··························· now →</div>
+      </div></div>
+      <p class="note">Shows who waits on whom over time, and waves would line up as columns. This is the natural v2/v3 view. Too much detail for a quick glance.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="e" onclick="toggleSelect(this)">
+    <div class="letter">E</div>
+    <div class="content">
+      <h3>Thin strip (one line, fits a window edge)</h3>
+      <div class="mockup"><div class="mockup-body strip">
+        <span class="pill perm">web-app ⏸ approve</span>
+        <span class="pill turn">data-pipeline ? your turn</span>
+        <span class="pill wait">side-project ⧗ 2/3</span>
+        <span class="pill work">analysis-scratch ▶</span>
+        <span style="opacity:.7">· 5h ~58% · ~1h50m</span>
+      </div></div>
+      <p class="note">Smallest footprint, answers "does anything need me?" and nothing else. Could be a collapsed mode of A.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:14px">My suggestion: <b>A as the main view</b>, <b>E as its collapsed mode</b>, and <b>D as a second tab</b> once v2's scopes and waves exist.</p>

@@ -1,0 +1,54 @@
+<style>
+  .st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;color:#fff}
+  .perm{background:#d9480f}.turn{background:#e8a200}.wait{background:#5c7cfa}.work{background:#2f9e44}.idle{background:#868e96}
+  .row{display:grid;grid-template-columns:140px 150px 1fr 90px 70px;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(128,128,128,.25);font-size:13px}
+  .row.hd{font-size:11px;text-transform:uppercase;opacity:.6}
+  .bar{height:6px;background:rgba(128,128,128,.25);border-radius:3px}.bar i{display:block;height:6px;border-radius:3px;background:#5c7cfa}
+  .tree{font-family:monospace;font-size:12px;line-height:1.5;white-space:pre;padding:6px 10px;opacity:.9}
+  .card{border:1px solid rgba(128,128,128,.35);border-radius:8px;padding:10px;font-size:13px}
+  .cg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .foot{margin-top:10px;font-size:12px;opacity:.8}
+</style>
+
+<h2>The glance view: which layout works for a side window?</h2>
+<p class="subtitle">Same fake data in both. The four states are the key idea: <b>needs approval</b> / <b>your turn</b> / <b>waiting on subagents</b> / <b>working</b>. Approval and your-turn go to the top.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Dense list, sorted by "needs you"</h3>
+      <div class="mockup"><div class="mockup-body">
+        <div class="row hd"><span>session</span><span>state</span><span>doing</span><span>context</span><span>age</span></div>
+        <div class="row"><b>web-app</b><span class="st perm">needs approval</span><span>Bash: <code>pytest tests/</code></span><div class="bar"><i style="width:42%"></i></div><span>3m</span></div>
+        <div class="row"><b>data-pipeline</b><span class="st turn">your turn</span><span>asked: "keep the old loader?"</span><div class="bar"><i style="width:61%"></i></div><span>11m</span></div>
+        <div class="row"><b>side-project</b><span class="st wait">waiting · 2/3</span><span>wave 1 of 2: review agents</span><div class="bar"><i style="width:30%"></i></div><span>4m</span></div>
+        <div class="tree">  ├─ code-reviewer      ✓ done     src/api/
+  ├─ python-reviewer    ● 4m       src/models/
+  └─ Explore            ● 2m       read-only</div>
+        <div class="row"><b>analysis-scratch</b><span class="st work">working</span><span>Edit: reco/fit.py</span><div class="bar"><i style="width:18%"></i></div><span>now</span></div>
+        <div class="foot">5h window: ▓▓▓▓▓▓░░░░ ~58% (±12%) · burn 1.1M/h · est. 1h50m left at this rate</div>
+      </div></div>
+      <p>One row per session, the waiting session expanded to show its tree. Reads in a narrow window.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Cards, one per session</h3>
+      <div class="mockup"><div class="mockup-body">
+        <div class="cg">
+          <div class="card" style="border-color:#d9480f"><b>web-app</b> <span class="st perm">needs approval</span><br>Bash: <code>pytest tests/</code><br><small>ctx 42% · 3m</small></div>
+          <div class="card" style="border-color:#e8a200"><b>data-pipeline</b> <span class="st turn">your turn</span><br>"keep the old loader?"<br><small>ctx 61% · 11m</small></div>
+          <div class="card"><b>side-project</b> <span class="st wait">waiting · 2/3</span><div class="tree">├─ code-reviewer ✓
+├─ python-reviewer ●
+└─ Explore ●</div><small>ctx 30%</small></div>
+          <div class="card"><b>analysis-scratch</b> <span class="st work">working</span><br>Edit: reco/fit.py<br><small>ctx 18% · now</small></div>
+        </div>
+        <div class="foot">5h window: ~58% (±12%) · est. 1h50m left</div>
+      </div></div>
+      <p>More visual, but takes more room and harder to scan in a strip.</p>
+    </div>
+  </div>
+</div>

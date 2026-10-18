@@ -1,0 +1,48 @@
+<style>
+  .st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;color:#fff}
+  .perm{background:#d9480f}.turn{background:#e8a200}.wait{background:#5c7cfa}.work{background:#2f9e44}
+  .strip{display:flex;gap:6px;font-size:12px;align-items:center;flex-wrap:wrap;padding:8px;border-bottom:2px solid rgba(128,128,128,.3)}
+  .pill{padding:3px 8px;border-radius:12px;color:#fff;font-weight:600}
+  .row{display:grid;grid-template-columns:18px 130px 140px 1fr 80px 50px;gap:8px;align-items:center;padding:7px 8px;border-bottom:1px solid rgba(128,128,128,.2);font-size:13px}
+  .bar{height:6px;background:rgba(128,128,128,.25);border-radius:3px}.bar i{display:block;height:6px;border-radius:3px;background:#5c7cfa}
+  .exp{background:rgba(92,124,250,.07);padding:8px 8px 8px 30px;font-size:12px;border-bottom:1px solid rgba(128,128,128,.2)}
+  .lane{display:grid;grid-template-columns:150px 1fr 110px;gap:6px;align-items:center;margin-bottom:4px}
+  .track{position:relative;height:14px;background:rgba(128,128,128,.12);border-radius:3px}
+  .seg{position:absolute;top:2px;height:10px;border-radius:2px}
+  .now{position:absolute;top:-2px;bottom:-2px;right:0;width:2px;background:#d9480f}
+  .scope{font-family:monospace;opacity:.75}
+  .lbl{font-size:11px;text-transform:uppercase;opacity:.6;margin:10px 0 4px}
+</style>
+
+<h2>Combined: strip header, list, click a row to open its timeline</h2>
+
+<div class="lbl">Minimised: just the strip</div>
+<div class="mockup"><div class="mockup-body">
+  <div class="strip">
+    <span class="pill perm">web-app ⏸ approve</span>
+    <span class="pill turn">data-pipeline ? your turn</span>
+    <span class="pill wait">side-project ⧗ 2/3</span>
+    <span class="pill work">analysis-scratch ▶</span>
+    <span style="margin-left:auto;opacity:.7">5h ~58% ±12 · ~1h50m ⤢</span>
+  </div>
+</div></div>
+
+<div class="lbl">Expanded: strip on top, list below, one row opened</div>
+<div class="mockup"><div class="mockup-body">
+  <div class="strip">
+    <span class="pill perm">web-app ⏸</span><span class="pill turn">data-pipeline ?</span><span class="pill wait">side-project ⧗</span><span class="pill work">analysis-scratch ▶</span>
+    <span style="margin-left:auto;opacity:.7">5h ~58% ±12 · ~1h50m ⤡</span>
+  </div>
+  <div class="row"><span>▸</span><b>web-app</b><span class="st perm">needs approval</span><span>Bash: <code>pytest tests/</code></span><div class="bar"><i style="width:42%"></i></div><span>3m</span></div>
+  <div class="row"><span>▸</span><b>data-pipeline</b><span class="st turn">your turn</span><span>"keep the old loader?"</span><div class="bar"><i style="width:61%"></i></div><span>11m</span></div>
+  <div class="row"><span>▾</span><b>side-project</b><span class="st wait">waiting · 2/3</span><span>2 of 3 subagents still running</span><div class="bar"><i style="width:30%"></i></div><span>4m</span></div>
+  <div class="exp">
+    <div class="lane"><b>side-project (parent)</b><div class="track"><div class="seg" style="left:0;width:30%;background:#2f9e44"></div><div class="seg" style="left:30%;width:70%;background:#5c7cfa"></div><div class="now"></div></div><span>ctx 30%</span></div>
+    <div class="lane">├ code-reviewer <small>specialist</small><div class="track"><div class="seg" style="left:30%;width:35%;background:#2f9e44"></div></div><span class="scope">✓ src/api/</span></div>
+    <div class="lane">├ python-reviewer <small>specialist</small><div class="track"><div class="seg" style="left:30%;width:70%;background:#2f9e44"></div><div class="now"></div></div><span class="scope">● src/models/</span></div>
+    <div class="lane">│&nbsp;&nbsp;└ Explore <small>general · depth 2</small><div class="track"><div class="seg" style="left:62%;width:38%;background:#2f9e44"></div><div class="now"></div></div><span class="scope">● read-only</span></div>
+    <div class="lane">└ general-purpose <small>general</small><div class="track"><div class="seg" style="left:32%;width:68%;background:#2f9e44"></div><div class="now"></div></div><span class="scope">● docs/</span></div>
+    <div style="opacity:.6;margin-top:4px">← 20 min ··························· now → &nbsp;·&nbsp; depth 2 · 3 specialist / 2 general · tokens 186k across agents</div>
+  </div>
+  <div class="row"><span>▸</span><b>analysis-scratch</b><span class="st work">working</span><span>Edit: reco/fit.py</span><div class="bar"><i style="width:18%"></i></div><span>now</span></div>
+</div></div>
