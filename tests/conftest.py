@@ -1,4 +1,6 @@
 import json
+import os
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -28,6 +30,9 @@ class ClaudeDir:
     def add_session(self, sid: str, records: list[dict]) -> Path:
         path = self.project / f"{sid}.jsonl"
         path.write_text("".join(json.dumps(r) + "\n" for r in records))
+        stamps = [datetime.fromisoformat(r["timestamp"]).timestamp() for r in records if "timestamp" in r]
+        if stamps:  # realistic mtime: readers skip files untouched since their window
+            os.utime(path, (max(stamps), max(stamps)))
         return path
 
     def add_subagent(self, sid: str, aid: str, meta: dict, records: list[dict] | None = None) -> None:
