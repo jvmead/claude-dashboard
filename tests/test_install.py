@@ -50,3 +50,10 @@ def test_hook_command_writes_one_wrapped_line(tmp_path):
     assert len(lines) == 2
     rec = json.loads(lines[0])
     assert rec["e"] == payload and isinstance(rec["ts"], int)
+
+
+def test_install_keeps_non_ascii_text_as_is(tmp_path):
+    p = tmp_path / "settings.json"
+    p.write_text('{"note": "a — b"}')
+    install(p)
+    assert "a — b" in p.read_text()

@@ -20,7 +20,7 @@ def _load(path: Path) -> dict:
 
 def _save(path: Path, data: dict) -> None:
     tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(data, indent=2) + "\n")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
     os.replace(tmp, path)  # atomic: a crash never leaves half a settings file
 
 
