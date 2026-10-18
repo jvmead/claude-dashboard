@@ -1,6 +1,6 @@
 # Claude Session Dashboard — Revised Design (draft)
 
-**Status:** DRAFT, brainstorm paused 2026-10-18. **Not yet approved.** Supersedes the discovery/status
+**Status:** DRAFT, builder-check done 2026-10-18, awaiting James's approval. Supersedes the discovery/status
 parts of `2026-07-06-claude-session-dashboard-design.md` (env facts there still useful).
 Before approval: finish the open questions below, then run the brainstorming builder-check, then `writing-plans`.
 
@@ -22,11 +22,12 @@ whether tracks are independent or coupled (see v2/v3). This ties to the batch-an
 | (assumed Agent View covers glancing) | **Agent View only shows *background* agents** | Tested 2026-10-18: interactive `claude agents` lists only sessions dispatched from it; normal terminal sessions appear only in `--json`, as bare `busy`/`idle`, with launch cwd (not current) and no subagents. So: reuse `--json` for discovery; the 4 states + subagent tree are ours. |
 | — | Subagent tree + timeline, 5h estimate | New requirements. |
 
-## Status model (core idea)
+## Status model (core idea; 4 active states + parked)
 | State | Meaning | Detection (checked against hooks docs 2026-10-18) |
 |---|---|---|
 | 🟥 needs approval | permission prompt pending | `Notification` hook, matcher `permission_prompt` (or `PermissionRequest` event), writes a state file; cleared by next `PostToolUse`/`Stop`. No popup |
-| 🟨 your turn | asked a question / finished, waiting on James | `idle` and 0 outstanding subagents |
+| 🟨 your turn | asked a question / finished, waiting on James | `idle` and 0 outstanding subagents, idle ≤ 30 min |
+| ⬜ parked | idle and untouched | as 🟨 but idle > 30 min; sorts last |
 | 🟦 waiting n/m | blocked on its own subagents | `idle` and outstanding > 0 (batch-guard already counts per session) |
 | 🟩 working | busy | `busy` from `claude agents --json` |
 
@@ -65,6 +66,33 @@ position, projected time left.
 - **Purpose:** personal + portfolio → tests, README, clean design.
 - **Stack:** stdlib + JSONL: hooks append JSONL; Python stdlib `http.server` serves; vanilla JS polls. No new deps.
 - **Location:** moved to `/home/jvmead/projects/claude-dashboard`.
+
+## Builder-check answers (James, 2026-10-18)
+- **Parked state:** a 🟨 session idle > 30 min turns ⬜ *parked*, sorts below active sessions, and
+  reverts on any new event. No manual dismiss.
+- **Nesting fallback:** if the logging hook shows the spawner can't be inferred reliably, v1 shows a
+  flat subagent list ("depth unknown", no max-depth footer). Tree rebuild from subagent transcripts → v2.
+- **5h estimate:** usage outside Claude Code on this machine (claude.ai, desktop, other devices) is
+  invisible; the strip labels the estimate "this machine only". No correction attempted.
+- **Raw log is the source of truth:** hooks store payloads verbatim and never filter fields, and the
+  JSONL is kept (rotated, not truncated), so a later full subagent tree is a new *reader* over existing
+  logs, not a hook change. Hooks only need revisiting if the tree needs an event we don't subscribe to;
+  the logging spike should therefore subscribe to every subagent-related event (`SubagentStart`,
+  `SubagentStop`, `Pre/PostToolUse` on `Agent`) from day one.
+
+## Builder-check calls (Claude's, 2026-10-18; James to check)
+- **Hooks live in this repo**, not `~/.claude/scripts`. Each hook is a one-line shell append of the raw
+  payload to a JSONL file (`cat >> …`); all parsing happens in the Python server. No Python/Node start-up
+  per tool event. `install.py` adds/removes the entries in `settings.json` (done via a `~/.claude`
+  worktree + feat branch per self-config rules).
+- **🟦 count comes from our own event log**, not the batch-guard's `/tmp/claude-agent-batch-<sid>.json`
+  (that file resets lazily, updates only on spawn/stop, and changes format in v2).
+- **No "scope" column in v1.** Real scopes are v2. v1 labels each subagent with its spawn `description`
+  (from the `Agent` tool input); mockup's scope column is a v2 preview.
+- **Per-session usage** in v1 = tokens over the last hour in the timeline footer. The strip keeps one
+  global 5h figure.
+- **Sessions started before the hooks are installed** show plain busy/idle from `claude agents --json`,
+  marked "no hook data". No transcript heuristic.
 
 ## Open questions (resolved, kept for history)
 1. **Purpose:** personal tool only, or also a portfolio piece for DS/quant-dev applications? (Sets stack and test bar.)
