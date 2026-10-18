@@ -47,6 +47,7 @@ def test_multiline_action_is_collapsed(claude_dir):
 
 def test_incremental_scan_sees_appends_and_waits_for_complete_lines(claude_dir):
     import json
+
     from dashboard.transcripts import scan
     p = claude_dir.add_session("s1", [assistant("2026-10-18T10:00:00Z", text="one")])
     summary, stamps = scan(p)

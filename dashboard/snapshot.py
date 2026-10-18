@@ -1,15 +1,15 @@
 """Assemble everything the page shows into one JSON-able dict."""
-import json
 import os
 from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 
 from dashboard.discovery import DiscoveryError, LiveSession
+from dashboard.install import is_installed
 from dashboard.status import SORT_ORDER, approval_pending, classify
 from dashboard.subagents import SubagentNode, is_specialist, load_subagents, max_depth, outstanding, walk
 from dashboard.transcripts import find_transcript, iter_records, scan
-from dashboard.usage import file_records, estimate
+from dashboard.usage import estimate, file_records
 
 CONTEXT_LIMIT = int(os.environ.get("CLAUDE_CONTEXT_LIMIT", 200_000))
 TIMELINE_S = 20 * 60
@@ -104,7 +104,7 @@ def session_row(claude_dir: Path, s: LiveSession, prompts: dict[str, float], now
 def build_snapshot(claude_dir: Path, sessions_fn: Callable[[], list[LiveSession]], now: float,
                    ceiling_cache: Path) -> dict:
     snap = {"now": now, "error": None, "sessions": [], "context_limit": CONTEXT_LIMIT,
-            "hook_installed": hook_log(claude_dir).exists(),
+            "hook_installed": is_installed(claude_dir / "settings.json"),
             "usage": estimate(claude_dir, now, ceiling_cache)}
     try:
         sessions = sessions_fn()

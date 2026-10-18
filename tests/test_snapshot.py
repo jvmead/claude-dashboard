@@ -72,3 +72,10 @@ def test_approval_from_hook_log(claude_dir, tmp_path):
     write_hook_log(claude_dir, (NOW - 90, {"hook_event_name": "PermissionRequest", "session_id": "s1"}))
     [row] = snap(claude_dir, [live("s1", busy=True)], tmp_path)["sessions"]
     assert row["state"] == "approval" and row["last_action"] == "Bash: rm -rf build"
+
+
+def test_hook_installed_reads_settings(claude_dir, tmp_path):
+    from dashboard.install import install
+    assert snap(claude_dir, [], tmp_path)["hook_installed"] is False
+    install(claude_dir.root / "settings.json")
+    assert snap(claude_dir, [], tmp_path)["hook_installed"] is True

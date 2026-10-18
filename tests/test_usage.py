@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from dashboard.usage import block_start, ceiling_samples, collect, estimate, weighted
 from tests.conftest import assistant
@@ -8,7 +8,7 @@ U = {"input_tokens": 100, "cache_creation_input_tokens": 0, "cache_read_input_to
 
 
 def iso(t: float) -> str:
-    return datetime.fromtimestamp(t, timezone.utc).isoformat()
+    return datetime.fromtimestamp(t, UTC).isoformat()
 
 
 def rejection(t: float, resets_at: float) -> dict:
