@@ -25,6 +25,17 @@ python -m dashboard --port 9000
 
 Python 3.11+, standard library only. It listens on localhost only.
 
+`--open` also opens a browser tab. If the port is already taken it assumes the dashboard is running
+and only opens the tab, so it is safe to call repeatedly. To start it with VS Code (WSL remote), put
+this in `~/.vscode-server/server-env-setup`, which the VS Code server sources when it starts:
+
+```bash
+(cd ~/projects/claude-dashboard && setsid python -m dashboard --open \
+    >/tmp/claude-dashboard.log 2>&1 < /dev/null &)
+```
+
+Use the absolute path to your Python if `python` isn't on the server's `PATH`.
+
 To detect permission prompts (🟥), install the hook once:
 
 ```bash
@@ -70,7 +81,7 @@ prices. They have not been fitted to the samples.
 ## Develop
 
 ```bash
-python -m pytest        # 50 tests, no network
+python -m pytest        # 52 tests, no network
 ruff check dashboard tests
 ```
 
