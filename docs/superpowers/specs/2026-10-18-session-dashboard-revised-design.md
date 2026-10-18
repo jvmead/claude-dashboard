@@ -1,6 +1,6 @@
 # Claude Session Dashboard — Revised Design (draft)
 
-**Status:** DRAFT, builder-check done 2026-10-18, awaiting James's approval. Supersedes the discovery/status
+**Status:** APPROVED 2026-10-18 (James delegated: "produce something to your own specs", will review the end product). Supersedes the discovery/status
 parts of `2026-07-06-claude-session-dashboard-design.md` (env facts there still useful).
 Before approval: finish the open questions below, then run the brainstorming builder-check, then `writing-plans`.
 
