@@ -80,6 +80,12 @@ position, projected time left.
   the logging spike should therefore subscribe to every subagent-related event (`SubagentStart`,
   `SubagentStop`, `Pre/PostToolUse` on `Agent`) from day one.
 
+## Spike result (2026-10-18) — supersedes the "raw log" bullet above
+Claude Code already writes `subagents/agent-<id>.meta.json` beside each transcript with `parentAgentId`,
+`spawnDepth`, `agentType`, `description`, `requestShape`, `finished`. So the full tree is on disk without
+any hook, and future tree features are readers over those files. The only hook v1 needs is for
+permission prompts (`Notification`/`permission_prompt` + `PermissionRequest`), which nothing else records.
+
 ## Builder-check calls (Claude's, 2026-10-18; James to check)
 - **Hooks live in this repo**, not `~/.claude/scripts`. Each hook is a one-line shell append of the raw
   payload to a JSONL file (`cat >> …`); all parsing happens in the Python server. No Python/Node start-up
