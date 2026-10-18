@@ -90,8 +90,14 @@ def walk(nodes: list[SubagentNode]):
         yield from walk(n.children)
 
 
-def outstanding(nodes: list[SubagentNode]) -> int:
-    return sum(not n.finished for n in walk(nodes))
+def running(n: SubagentNode, since: float) -> bool:
+    """Unfinished and active since `since` (the session's start): meta.json files left by an
+    earlier run of a resumed session often lack `finished` and would otherwise run forever."""
+    return not n.finished and n.last_activity >= since
+
+
+def outstanding(nodes: list[SubagentNode], since: float = 0.0) -> int:
+    return sum(running(n, since) for n in walk(nodes))
 
 
 def max_depth(nodes: list[SubagentNode]) -> int:

@@ -56,3 +56,9 @@ def test_max_depth(claude_dir):
 def test_specialist():
     assert is_specialist("python-pro")
     assert not is_specialist("general-purpose")
+
+
+def test_outstanding_ignores_agents_idle_since_before_session_start(claude_dir):
+    roots = tree(claude_dir)
+    assert outstanding(roots, since=0) == 2
+    assert outstanding(roots, since=float("inf")) == 0

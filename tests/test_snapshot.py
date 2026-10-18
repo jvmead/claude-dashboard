@@ -44,7 +44,8 @@ def test_sorted_by_attention(claude_dir, tmp_path):
 def test_waiting_on_background_subagent(claude_dir, tmp_path):
     claude_dir.add_session("s1", [assistant(iso(NOW - 60), text="spawned")])
     claude_dir.add_subagent("s1", "a", {"agentType": "python-pro", "description": "do x",
-                                        "spawnDepth": 1, "finished": False})
+                                        "spawnDepth": 1, "finished": False},
+                            [assistant(iso(NOW - 30), text="working")])
     [row] = snap(claude_dir, [live("s1")], tmp_path)["sessions"]
     assert row["state"] == "waiting" and row["outstanding"] == 1 and row["specialists"] == 1
     assert row["subagents"][0]["description"] == "do x"
@@ -126,3 +127,12 @@ def test_usage_failure_keeps_sessions(claude_dir, tmp_path, monkeypatch):
     monkeypatch.setattr(snapshot, "estimate", boom)
     s = snap(claude_dir, [live("ghost")], tmp_path)
     assert s["usage"] == {"error": "OSError: disk gone"} and len(s["sessions"]) == 1
+
+
+def test_stale_unfinished_subagent_from_before_resume(claude_dir, tmp_path):
+    claude_dir.add_session("s1", [assistant(iso(NOW - 60), text="resumed")])
+    claude_dir.add_subagent("s1", "old", {"agentType": "Explore", "description": "old"},  # no "finished"
+                            [assistant(iso(NOW - 7200), text="...")])  # live() started at NOW - 3600
+    [row] = snap(claude_dir, [live("s1")], tmp_path)["sessions"]
+    assert row["state"] == "your_turn" and row["outstanding"] == 0
+    assert row["subagents"][0]["running"] is False

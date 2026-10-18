@@ -99,13 +99,13 @@ function renderTimeline(r, now) {
     for (const [a, b] of r.parent_busy_segments) seg(track, a, b + 5, now, "run");
   }));
   const all = flatten(r.subagents);
-  const shown = all.filter(n => !n.finished || n.last_activity >= now - TIMELINE_S);
+  const shown = all.filter(n => n.running || n.last_activity >= now - TIMELINE_S);
   for (const n of shown) {
     const indent = "  ".repeat(n.depth - 1) + "└ ";
     const kind = `${n.specialist ? "specialist" : "general"}${n.depth > 1 ? ` · depth ${n.depth}` : ""}${n.background ? " · bg" : ""}`;
-    const what = `${n.finished ? "✓" : "●"} ${n.description} · ${dur(n.last_activity - n.started)}`;
+    const what = `${n.running ? "●" : "✓"} ${n.description} · ${dur(n.last_activity - n.started)}`;
     box.append(lane(indent + n.agent_type, kind, what, track =>
-      seg(track, n.started, n.finished ? n.last_activity : now, now, n.finished ? "fin" : "run")));
+      seg(track, n.started, n.running ? now : n.last_activity, now, n.running ? "run" : "fin")));
   }
   const hidden = all.length - shown.length;
   box.append(el("div", "foot",

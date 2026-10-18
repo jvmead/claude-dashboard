@@ -7,7 +7,7 @@ from pathlib import Path
 from dashboard.discovery import DiscoveryError, LiveSession
 from dashboard.install import is_installed
 from dashboard.status import SORT_ORDER, classify
-from dashboard.subagents import SubagentNode, is_specialist, load_subagents, max_depth, outstanding, walk
+from dashboard.subagents import SubagentNode, is_specialist, load_subagents, max_depth, outstanding, running, walk
 from dashboard.transcripts import find_transcript, iter_records, scan
 from dashboard.usage import estimate, file_records
 
@@ -74,10 +74,11 @@ def _tokens_since(files: list[Path], since: float) -> float:
     return total
 
 
-def _node_dict(n: SubagentNode) -> dict:
+def _node_dict(n: SubagentNode, since: float) -> dict:
     d = asdict(n)
     d["specialist"] = is_specialist(n.agent_type)
-    d["children"] = [_node_dict(c) for c in n.children]
+    d["running"] = running(n, since)
+    d["children"] = [_node_dict(c, since) for c in n.children]
     return d
 
 
@@ -105,13 +106,13 @@ def session_row(claude_dir: Path, s: LiveSession, pending: set[str], now: float)
         context_pct=summary.context_tokens / CONTEXT_LIMIT,
         model=summary.model,
         idle_s=max(0.0, now - summary.last_activity),
-        outstanding=outstanding(roots),
+        outstanding=outstanding(roots, s.started),
         total_subagents=len(nodes),
         max_depth=max_depth(roots),
         specialists=sum(is_specialist(n.agent_type) for n in nodes),
         generals=sum(not is_specialist(n.agent_type) for n in nodes),
         tokens_last_hour=_tokens_since(files, now - 3600),
-        subagents=[_node_dict(n) for n in roots],
+        subagents=[_node_dict(n, s.started) for n in roots],
         parent_busy_segments=_segments([t for t in stamps if t >= now - TIMELINE_S]),
     )
     row["state"] = classify(s.busy, row["outstanding"], row["idle_s"], s.session_id in pending).value

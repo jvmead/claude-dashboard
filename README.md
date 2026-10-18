@@ -82,7 +82,6 @@ prices. They have not been fitted to the samples.
 
 ## Known issues (v1)
 
-- Stale `meta.json` files with no `finished` key can keep a resumed session at 🟦.
 - The burn rate isn't always shown in the strip.
 
 ## Develop
