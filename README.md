@@ -43,8 +43,10 @@ python -m dashboard.install               # adds it to ~/.claude/settings.json
 python -m dashboard.install --uninstall
 ```
 
-The hook appends each prompt event as one line to `~/.claude/dashboard/events.jsonl`. It doesn't
-change how the prompt behaves.
+The hook appends one line per event to `~/.claude/dashboard/events.jsonl`: each permission prompt,
+plus the `PostToolUse`, `Stop`, `SubagentStop` and `UserPromptSubmit` events that answer it. A
+session shows 🟥 while its last logged event is a prompt. The hook doesn't change how the prompt
+behaves.
 
 ## How it works
 
@@ -55,7 +57,7 @@ claude agents --json ──────────────┐  live session
 ~/.claude/projects/*/<sid>.jsonl ──┤  last action, context size, activity times
   <sid>/subagents/*.meta.json ─────┤  subagent tree (parentAgentId, spawnDepth, finished)
   <sid>/subagents/*.jsonl ─────────┤  subagent runtime and tokens
-~/.claude/dashboard/events.jsonl ──┘  permission prompts (the only hook)
+~/.claude/dashboard/events.jsonl ──┘  permission prompts and what answered them (the only hook)
           │
      snapshot.py  →  /api/state  →  static/app.js (polls every 3 s)
 ```
@@ -80,8 +82,6 @@ prices. They have not been fitted to the samples.
 
 ## Known issues (v1)
 
-- 🟥 *needs approval* rarely shows. The hook stamps whole seconds and is compared with a
-  nanosecond transcript mtime, so a prompt usually looks older than the transcript write it caused.
 - One vanished file or malformed record fails the whole snapshot, and the page then says "server
   unreachable".
 - Stale `meta.json` files with no `finished` key can keep a resumed session at 🟦.

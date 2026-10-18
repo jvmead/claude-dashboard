@@ -10,8 +10,10 @@ from pathlib import Path
 # Raw payload, newlines stripped (JSON strings can't hold literal ones, so this is lossless),
 # wrapped with a receive time, appended in a single write so concurrent sessions don't interleave.
 HOOK_CMD = ("mkdir -p ~/.claude/dashboard && p=$(tr -d '\\n') && "
-            "printf '{\"ts\":%s,\"e\":%s}\\n' \"$(date +%s)\" \"$p\" >> ~/.claude/dashboard/events.jsonl")
-EVENTS = {"Notification": "permission_prompt", "PermissionRequest": "*"}
+            "printf '{\"ts\":%s,\"e\":%s}\\n' \"$(date +%s.%N)\" \"$p\" >> ~/.claude/dashboard/events.jsonl")
+# Prompts open an approval; the rest close it. None = event takes no matcher.
+EVENTS = {"Notification": "permission_prompt", "PermissionRequest": "*", "PostToolUse": "*",
+          "Stop": None, "SubagentStop": None, "UserPromptSubmit": None}
 
 
 def _load(path: Path) -> dict:
@@ -42,7 +44,8 @@ def install(path: Path) -> None:
     for event, matcher in EVENTS.items():
         entries = hooks.setdefault(event, [])
         if not any(_ours(e) for e in entries):
-            entries.append({"matcher": matcher, "hooks": [{"type": "command", "command": HOOK_CMD}]})
+            entry = {"hooks": [{"type": "command", "command": HOOK_CMD}]}
+            entries.append(entry if matcher is None else {"matcher": matcher, **entry})
     _save(path, data)
 
 

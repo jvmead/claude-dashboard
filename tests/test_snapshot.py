@@ -2,7 +2,7 @@ import json
 import os
 
 from dashboard.discovery import DiscoveryError, LiveSession
-from dashboard.snapshot import build_snapshot, read_prompts
+from dashboard.snapshot import build_snapshot, pending_approvals
 from tests.conftest import assistant
 from tests.test_usage import iso
 
@@ -56,20 +56,30 @@ def write_hook_log(claude_dir, *events):
     (d / "events.jsonl").write_text("".join(json.dumps({"ts": ts, "e": e}) + "\n" for ts, e in events))
 
 
-def test_read_prompts(claude_dir):
+def prompt(sid, **extra):
+    return {"hook_event_name": "PermissionRequest", "session_id": sid, **extra}
+
+
+def test_pending_approvals(claude_dir):
     write_hook_log(claude_dir,
-                   (10, {"hook_event_name": "Notification", "notification_type": "permission_prompt",
-                         "session_id": "s1"}),
-                   (20, {"hook_event_name": "Notification", "notification_type": "idle_prompt",
-                         "session_id": "s1"}),
-                   (30, {"hook_event_name": "PermissionRequest", "session_id": "s2"}))
-    assert read_prompts(claude_dir.root) == {"s1": 10, "s2": 30}
+                   (1.0, prompt("answered")), (2.0, {"hook_event_name": "PostToolUse", "session_id": "answered"}),
+                   (1.0, prompt("open")),
+                   (1.0, {"hook_event_name": "Notification", "notification_type": "idle_prompt",
+                          "session_id": "idle"}),
+                   (1.0, {"hook_event_name": "Notification", "notification_type": "permission_prompt",
+                          "session_id": "stopped"}), (2.0, {"hook_event_name": "Stop", "session_id": "stopped"}),
+                   # a background subagent finishing a tool doesn't answer the parent's prompt
+                   (1.0, prompt("bg")), (2.0, {"hook_event_name": "PostToolUse", "session_id": "bg",
+                                               "agent_id": "a"}),
+                   (1.0, prompt("sub", agent_id="a")), (2.0, {"hook_event_name": "SubagentStop",
+                                                              "session_id": "sub", "agent_id": "a"}))
+    assert pending_approvals(claude_dir.root) == {"open", "bg"}
 
 
-def test_approval_from_hook_log(claude_dir, tmp_path):
+def test_approval_survives_later_transcript_write(claude_dir, tmp_path):
     p = claude_dir.add_session("s1", [assistant(iso(NOW - 120), tool=("Bash", {"command": "rm -rf build"}))])
-    os.utime(p, (NOW - 100, NOW - 100))
-    write_hook_log(claude_dir, (NOW - 90, {"hook_event_name": "PermissionRequest", "session_id": "s1"}))
+    write_hook_log(claude_dir, (NOW - 90.5, prompt("s1")))
+    os.utime(p, (NOW - 90, NOW - 90))  # attachment write landing alongside the prompt
     [row] = snap(claude_dir, [live("s1", busy=True)], tmp_path)["sessions"]
     assert row["state"] == "approval" and row["last_action"] == "Bash: rm -rf build"
 

@@ -24,7 +24,3 @@ def classify(busy: bool, outstanding: int, idle_seconds: float, approval_pending
         return State.WAITING
     return State.YOUR_TURN if idle_seconds <= PARKED_AFTER_S else State.PARKED
 
-
-def approval_pending(last_prompt_ts: float | None, last_activity_ts: float) -> bool:
-    """A prompt is still pending if nothing was written to the transcripts since it fired."""
-    return last_prompt_ts is not None and last_prompt_ts > last_activity_ts

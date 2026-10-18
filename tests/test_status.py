@@ -1,4 +1,4 @@
-from dashboard.status import State, approval_pending, classify
+from dashboard.status import State, classify
 
 
 def test_approval_beats_everything():
@@ -19,12 +19,3 @@ def test_idle_recently_is_your_turn():
 
 def test_idle_over_30_min_is_parked():
     assert classify(busy=False, outstanding=0, idle_seconds=1801, approval_pending=False) is State.PARKED
-
-
-def test_approval_pending_needs_a_prompt():
-    assert not approval_pending(None, 100.0)
-
-
-def test_prompt_after_last_activity_is_pending():
-    assert approval_pending(200.0, 100.0)
-    assert not approval_pending(100.0, 200.0)

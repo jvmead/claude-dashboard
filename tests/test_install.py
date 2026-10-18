@@ -21,7 +21,9 @@ def test_install_is_idempotent(tmp_path):
     install(p)
     install(p)
     assert commands(p, "Notification") == ["echo other", HOOK_CMD]
-    assert commands(p, "PermissionRequest") == [HOOK_CMD]
+    for event in ("PermissionRequest", "PostToolUse", "Stop", "SubagentStop", "UserPromptSubmit"):
+        assert commands(p, event) == [HOOK_CMD]
+    assert "matcher" not in json.loads(p.read_text())["hooks"]["Stop"][0]
     assert json.loads(p.read_text())["model"] == "opus"
 
 
@@ -49,7 +51,7 @@ def test_hook_command_writes_one_wrapped_line(tmp_path):
     lines = (tmp_path / ".claude" / "dashboard" / "events.jsonl").read_text().splitlines()
     assert len(lines) == 2
     rec = json.loads(lines[0])
-    assert rec["e"] == payload and isinstance(rec["ts"], int)
+    assert rec["e"] == payload and isinstance(rec["ts"], float)  # sub-second: prompts land ms after writes
 
 
 def test_install_keeps_non_ascii_text_as_is(tmp_path):
