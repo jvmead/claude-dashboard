@@ -35,6 +35,7 @@ function stateText(r) {
 }
 
 function usageText(u, now) {
+  if (u.error) return `5h: unavailable (${u.error})`;
   if (u.block_start === null) return "5h: idle window";
   const reset = `resets ${dur(u.block_end - now)}`;
   if (!u.samples) return `5h: ${kilo(u.used)} used · no past limit on record · ${reset} · ${u.label}`;
@@ -159,6 +160,12 @@ function render(s) {
 async function poll() {
   try {
     const res = await fetch("/api/state", { cache: "no-store" });
+    if (res.status === 500) {
+      const banner = document.getElementById("banner");
+      banner.hidden = false;
+      banner.textContent = `Dashboard error: ${(await res.json()).error}. Retrying…`;
+      return;
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     last = await res.json();
     render(last);

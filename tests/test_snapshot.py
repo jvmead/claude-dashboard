@@ -89,3 +89,40 @@ def test_hook_installed_reads_settings(claude_dir, tmp_path):
     assert snap(claude_dir, [], tmp_path)["hook_installed"] is False
     install(claude_dir.root / "settings.json")
     assert snap(claude_dir, [], tmp_path)["hook_installed"] is True
+
+
+def test_malformed_record_skipped(claude_dir, tmp_path):
+    bad = assistant(iso(NOW - 30), text="ok")
+    p = claude_dir.add_session("s1", [assistant(iso(NOW - 60), text="first")])
+    with p.open("a") as f:
+        f.write(json.dumps({**bad, "timestamp": "garbage"}) + "\n")
+    os.utime(p, (NOW - 30, NOW - 30))
+    claude_dir.add_subagent("s1", "a", {"agentType": "x"}, [{**bad, "timestamp": 5}])
+    s = snap(claude_dir, [live("s1")], tmp_path)
+    assert s["sessions"][0]["last_action"] == "first" and s["usage"]["used"] > 0
+
+
+def test_one_broken_session_keeps_the_rest(claude_dir, tmp_path, monkeypatch):
+    import dashboard.snapshot as snapshot
+    claude_dir.add_session("ok", [assistant(iso(NOW - 60), text="fine")])
+    claude_dir.add_session("gone", [assistant(iso(NOW - 60), text="fine")])
+    real = snapshot.scan
+
+    def scan(path):
+        if path.stem == "gone":
+            raise FileNotFoundError(path)
+        return real(path)
+    monkeypatch.setattr(snapshot, "scan", scan)
+    rows = {r["session_id"]: r for r in snap(claude_dir, [live("ok"), live("gone", busy=True)], tmp_path)["sessions"]}
+    assert rows["ok"]["last_action"] == "fine"
+    assert rows["gone"]["state"] == "working" and rows["gone"]["last_action"].startswith("can't read")
+
+
+def test_usage_failure_keeps_sessions(claude_dir, tmp_path, monkeypatch):
+    import dashboard.snapshot as snapshot
+
+    def boom(*_):
+        raise OSError("disk gone")
+    monkeypatch.setattr(snapshot, "estimate", boom)
+    s = snap(claude_dir, [live("ghost")], tmp_path)
+    assert s["usage"] == {"error": "OSError: disk gone"} and len(s["sessions"]) == 1

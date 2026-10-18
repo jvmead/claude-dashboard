@@ -33,21 +33,27 @@ def file_records(path: Path, _mtime_ns: int, _size: int) -> tuple[tuple[Record, 
     for rec in iter_records(path):
         if rec.get("type") != "assistant" or not rec.get("timestamp"):
             continue
-        ts = parse_ts(rec["timestamp"])
-        q = rec.get("quotaLimits")
-        if isinstance(q, dict) and q.get("status") == "rejected" and q.get("rateLimitType") == "five_hour":
-            rejections.append((ts, float(q["resetsAt"])))
-        msg = rec.get("message") or {}
-        if msg.get("usage") and not rec.get("isApiErrorMessage"):
-            records.append((ts, weighted(msg["usage"], msg.get("model", "")), msg.get("id", "")))
+        try:
+            ts = parse_ts(rec["timestamp"])
+            q = rec.get("quotaLimits")
+            if isinstance(q, dict) and q.get("status") == "rejected" and q.get("rateLimitType") == "five_hour":
+                rejections.append((ts, float(q["resetsAt"])))
+            msg = rec.get("message") or {}
+            if msg.get("usage") and not rec.get("isApiErrorMessage"):
+                records.append((ts, weighted(msg["usage"], msg.get("model", "")), msg.get("id", "")))
+        except (ValueError, TypeError, KeyError):  # malformed record: skip just it
+            continue
     return tuple(records), tuple(rejections)
 
 
 def _scan(claude_dir: Path, since: float = 0.0):
     for path in (claude_dir / "projects").glob("**/*.jsonl"):
-        st = path.stat()
-        if st.st_mtime >= since:
-            yield file_records(path, st.st_mtime_ns, st.st_size)
+        try:
+            st = path.stat()
+            if st.st_mtime >= since:
+                yield file_records(path, st.st_mtime_ns, st.st_size)
+        except OSError:  # vanished or unreadable since the glob
+            continue
 
 
 def collect(claude_dir: Path, since: float, until: float = float("inf")) -> list[Record]:

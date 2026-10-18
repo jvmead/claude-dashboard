@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from dashboard.discovery import LiveSession
-from dashboard.snapshot import build_snapshot
+from dashboard.snapshot import build_snapshot, error_text
 
 STATIC = Path(__file__).parent / "static"
 ASSETS = {"/": ("index.html", "text/html"),
@@ -44,7 +44,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
         if path == "/api/state":
-            self._send(200, "application/json", self.cache.get())
+            try:
+                body = self.cache.get()
+            except Exception as e:  # the page shows it; the next poll retries
+                self._send(500, "application/json", json.dumps({"error": error_text(e)}).encode())
+                return
+            self._send(200, "application/json", body)
         elif path in ASSETS:  # whitelist: no filesystem paths from the URL
             name, ctype = ASSETS[path]
             self._send(200, f"{ctype}; charset=utf-8", (STATIC / name).read_bytes())

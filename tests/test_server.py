@@ -45,3 +45,14 @@ def test_binds_localhost_only(claude_dir, tmp_path):
     server = make_server(0, claude_dir.root, lambda: [], tmp_path / "c.json")
     assert server.server_address[0] == "127.0.0.1"
     server.server_close()
+
+
+def test_snapshot_failure_is_a_json_500(base_url, monkeypatch):
+    import dashboard.server as server
+
+    def boom(*_):
+        raise RuntimeError("bad")
+    monkeypatch.setattr(server, "build_snapshot", boom)
+    with pytest.raises(urllib.error.HTTPError) as e:
+        get(base_url + "/api/state")
+    assert e.value.code == 500 and json.loads(e.value.read()) == {"error": "RuntimeError: bad"}

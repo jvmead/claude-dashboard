@@ -88,10 +88,10 @@ def scan(path: Path) -> tuple[SessionSummary, tuple[float, ...]]:
     for line in complete.splitlines():
         try:
             rec = json.loads(line)
-        except ValueError:
+            if isinstance(rec, dict):
+                _apply(rec, summary, stamps)
+        except (ValueError, TypeError):  # malformed record (bad JSON, odd timestamp): skip just it
             continue
-        if isinstance(rec, dict):
-            _apply(rec, summary, stamps)
     _scanned[path] = (offset + len(complete), summary, stamps)
     return replace(summary), tuple(stamps)
 

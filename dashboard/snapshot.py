@@ -65,7 +65,10 @@ def _files(transcript: Path) -> list[Path]:
 def _tokens_since(files: list[Path], since: float) -> float:
     total = 0.0
     for f in files:
-        st = f.stat()
+        try:
+            st = f.stat()
+        except OSError:  # vanished since the glob
+            continue
         records, _ = file_records(f, st.st_mtime_ns, st.st_size)
         total += sum(w for t, w, _ in records if t >= since)
     return total
@@ -78,12 +81,16 @@ def _node_dict(n: SubagentNode) -> dict:
     return d
 
 
-def session_row(claude_dir: Path, s: LiveSession, pending: set[str], now: float) -> dict:
-    row = {"session_id": s.session_id, "name": s.name, "cwd": s.cwd, "age_s": now - s.started,
+def _base_row(s: LiveSession, now: float) -> dict:
+    return {"session_id": s.session_id, "name": s.name, "cwd": s.cwd, "age_s": now - s.started,
            "busy": s.busy, "last_action": "no transcript yet", "context_tokens": 0, "context_pct": 0.0,
            "model": None, "idle_s": 0.0, "outstanding": 0, "total_subagents": 0, "max_depth": 0,
            "specialists": 0, "generals": 0, "tokens_last_hour": 0.0, "subagents": [],
            "parent_busy_segments": []}
+
+
+def session_row(claude_dir: Path, s: LiveSession, pending: set[str], now: float) -> dict:
+    row = _base_row(s, now)
     transcript = find_transcript(claude_dir, s.session_id)
     if transcript is None:
         row["state"] = classify(s.busy, 0, 0, s.session_id in pending).value
@@ -111,18 +118,40 @@ def session_row(claude_dir: Path, s: LiveSession, pending: set[str], now: float)
     return row
 
 
+def error_text(e: Exception) -> str:
+    return f"{type(e).__name__}: {e}"
+
+
+def _safe_row(claude_dir: Path, s: LiveSession, pending: set[str], now: float) -> dict:
+    """One unreadable session degrades to a bare row instead of failing the snapshot."""
+    try:
+        return session_row(claude_dir, s, pending, now)
+    except Exception as e:  # shown on the row, not swallowed
+        row = _base_row(s, now)
+        row.update(last_action=f"can't read: {error_text(e)}"[:120],
+                   state=classify(s.busy, 0, 0, s.session_id in pending).value)
+        return row
+
+
+def _safe_estimate(claude_dir: Path, now: float, ceiling_cache: Path) -> dict:
+    try:
+        return estimate(claude_dir, now, ceiling_cache)
+    except Exception as e:  # shown in the strip, not swallowed
+        return {"error": error_text(e)}
+
+
 def build_snapshot(claude_dir: Path, sessions_fn: Callable[[], list[LiveSession]], now: float,
                    ceiling_cache: Path) -> dict:
     snap = {"now": now, "error": None, "sessions": [], "context_limit": CONTEXT_LIMIT,
             "hook_installed": is_installed(claude_dir / "settings.json"),
-            "usage": estimate(claude_dir, now, ceiling_cache)}
+            "usage": _safe_estimate(claude_dir, now, ceiling_cache)}
     try:
         sessions = sessions_fn()
     except DiscoveryError as e:
         snap["error"] = str(e)
         return snap
     pending = pending_approvals(claude_dir)
-    rows = [session_row(claude_dir, s, pending, now) for s in sessions]
+    rows = [_safe_row(claude_dir, s, pending, now) for s in sessions]
     order = {state.value: i for i, state in enumerate(SORT_ORDER)}
     snap["sessions"] = sorted(rows, key=lambda r: (order[r["state"]], r["idle_s"]))
     return snap

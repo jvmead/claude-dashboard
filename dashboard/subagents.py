@@ -34,22 +34,25 @@ def _transcript_stats(path: Path, _mtime_ns: int, _size: int) -> tuple[float, fl
     first = last = 0.0
     seen: dict[str, int] = {}
     for rec in iter_records(path):
-        if rec.get("timestamp"):
-            last = parse_ts(rec["timestamp"])
-            first = first or last
-        msg = rec.get("message") or {}
-        if rec.get("type") == "assistant" and msg.get("usage"):
-            u = msg["usage"]
-            # Cache reads are excluded: they re-count the same context every turn.
-            seen[msg.get("id", "")] = sum(u.get(k) or 0 for k in
-                                          ("input_tokens", "cache_creation_input_tokens", "output_tokens"))
+        try:
+            if rec.get("timestamp"):
+                last = parse_ts(rec["timestamp"])
+                first = first or last
+            msg = rec.get("message") or {}
+            if rec.get("type") == "assistant" and msg.get("usage"):
+                u = msg["usage"]
+                # Cache reads are excluded: they re-count the same context every turn.
+                seen[msg.get("id", "")] = sum(u.get(k) or 0 for k in
+                                              ("input_tokens", "cache_creation_input_tokens", "output_tokens"))
+        except (ValueError, TypeError, AttributeError):  # malformed record: skip just it
+            continue
     return first, last, sum(seen.values())
 
 
 def transcript_stats(path: Path) -> tuple[float, float, int] | None:
     try:
         st = path.stat()
-    except FileNotFoundError:
+    except OSError:
         return None
     return _transcript_stats(path, st.st_mtime_ns, st.st_size)
 
@@ -57,10 +60,12 @@ def transcript_stats(path: Path) -> tuple[float, float, int] | None:
 def _node(meta_path: Path) -> SubagentNode | None:
     try:
         meta = json.loads(meta_path.read_text())
+        mtime = meta_path.stat().st_mtime
     except (OSError, ValueError):
         return None
+    if not isinstance(meta, dict):
+        return None
     agent_id = meta_path.name.removeprefix("agent-").removesuffix(".meta.json")
-    mtime = meta_path.stat().st_mtime
     first, last, tokens = transcript_stats(meta_path.with_name(f"agent-{agent_id}.jsonl")) or (mtime, mtime, 0)
     return SubagentNode(agent_id, meta.get("agentType", "?"), meta.get("description", ""),
                         meta.get("parentAgentId"), meta.get("spawnDepth", 1),
