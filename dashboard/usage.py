@@ -27,7 +27,7 @@ def weighted(usage: dict, model: str) -> float:
 
 
 @lru_cache(maxsize=4096)
-def _file_records(path: Path, _mtime_ns: int, _size: int) -> tuple[tuple[Record, ...], tuple[tuple[float, float], ...]]:
+def file_records(path: Path, _mtime_ns: int, _size: int) -> tuple[tuple[Record, ...], tuple[tuple[float, float], ...]]:
     """(usage records, five_hour rejections as (ts, resetsAt)) for one transcript."""
     records, rejections = [], []
     for rec in iter_records(path):
@@ -47,7 +47,7 @@ def _scan(claude_dir: Path, since: float = 0.0):
     for path in (claude_dir / "projects").glob("**/*.jsonl"):
         st = path.stat()
         if st.st_mtime >= since:
-            yield _file_records(path, st.st_mtime_ns, st.st_size)
+            yield file_records(path, st.st_mtime_ns, st.st_size)
 
 
 def collect(claude_dir: Path, since: float, until: float = float("inf")) -> list[Record]:
