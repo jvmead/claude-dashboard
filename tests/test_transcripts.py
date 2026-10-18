@@ -37,3 +37,9 @@ def test_find_transcript(claude_dir):
     p = claude_dir.add_session("abc", [])
     assert find_transcript(claude_dir.root, "abc") == p
     assert find_transcript(claude_dir.root, "nope") is None
+
+
+def test_multiline_action_is_collapsed(claude_dir):
+    p = claude_dir.add_session("s1", [assistant("2026-10-18T10:00:00Z",
+                                                tool=("Bash", {"command": "cd x &&\n  pytest"}))])
+    assert summarize(p).last_action == "Bash: cd x && pytest"

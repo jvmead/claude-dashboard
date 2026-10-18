@@ -52,7 +52,7 @@ def context_tokens(usage: dict) -> int:
 def describe_block(block: dict) -> str | None:
     if block.get("type") == "tool_use":
         inp = block.get("input") or {}
-        detail = next((str(inp[k]) for k in ACTION_KEYS if inp.get(k)), "")
+        detail = " ".join(next((str(inp[k]) for k in ACTION_KEYS if inp.get(k)), "").split())
         return f"{block.get('name')}: {detail}".rstrip(": ")[:ACTION_CHARS]
     if block.get("type") == "text" and block.get("text", "").strip():
         return block["text"].strip().splitlines()[0][:ACTION_CHARS]
