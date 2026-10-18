@@ -19,12 +19,13 @@ whether tracks are independent or coupled (see v2/v3). This ties to the batch-an
 | `/proc` scan + tmux + registry for discovery | **`claude agents --json`** (pid, cwd, sessionId, name, `idle`/`busy`) | Native since Agent View (May 2026, v2.1.139+; installed 2.1.302). Solves same-cwd ambiguity. |
 | tmux `capture-pane` status heuristics | **4-state model from hooks** (below) | `idle` alone can't tell "waiting on subagents" from "waiting on me". |
 | Launch/resume sessions | **Dropped** | Agent View (`claude agents`) already dispatches/peeks/replies. |
+| (assumed Agent View covers glancing) | **Agent View only shows *background* agents** | Tested 2026-10-18: interactive `claude agents` lists only sessions dispatched from it; normal terminal sessions appear only in `--json`, as bare `busy`/`idle`, with launch cwd (not current) and no subagents. So: reuse `--json` for discovery; the 4 states + subagent tree are ours. |
 | — | Subagent tree + timeline, 5h estimate | New requirements. |
 
 ## Status model (core idea)
-| State | Meaning | Detection (**unverified guesses**, check first) |
+| State | Meaning | Detection (checked against hooks docs 2026-10-18) |
 |---|---|---|
-| 🟥 needs approval | permission prompt pending | `Notification` hook (permission type) writes a state file; no popup |
+| 🟥 needs approval | permission prompt pending | `Notification` hook, matcher `permission_prompt` (or `PermissionRequest` event), writes a state file; cleared by next `PostToolUse`/`Stop`. No popup |
 | 🟨 your turn | asked a question / finished, waiting on James | `idle` and 0 outstanding subagents |
 | 🟦 waiting n/m | blocked on its own subagents | `idle` and outstanding > 0 (batch-guard already counts per session) |
 | 🟩 working | busy | `busy` from `claude agents --json` |
@@ -48,7 +49,7 @@ position, projected time left.
 
 ## Known constraints / risks
 - **5h limit:** no ceiling stored locally; `quotaLimits` only appears at rejection (5 events on record). Plan: estimate ceiling from usage in the 5h before each rejection (weight cache reads down), show **estimate ± error band**, label it as such.
-- **Subagent attribution:** unverified whether hook payloads identify *which* subagent made a tool call. v2/v3 depend on it. First thing to check.
+- **Subagent attribution:** ✅ per hooks docs, tool events fired inside a subagent carry `agent_id` + `agent_type`. **No parent id**: nesting must be inferred (the `Agent` tool call that spawns a child carries the *spawner's* `agent_id`). Confirm with a throwaway logging hook before building the tree.
 - "How near completion" is only honest for agents spawned from a numbered plan; otherwise show runtime, not %.
 - `lib/transcript.js` zero-usage blind spot (config-HANDOFF) affects context readings for rate-limited sessions.
 
@@ -60,9 +61,14 @@ position, projected time left.
 - Claude-Code-Usage-Monitor, claumon (80% CI projection), ccusage `blocks`. Reuse their 5h approach.
 - None do declared scopes / coupled tracks / waves. That's the novel part.
 
-## Open questions for next session
+## Decisions (2026-10-18)
+- **Purpose:** personal + portfolio → tests, README, clean design.
+- **Stack:** stdlib + JSONL: hooks append JSONL; Python stdlib `http.server` serves; vanilla JS polls. No new deps.
+- **Location:** moved to `/home/jvmead/projects/claude-dashboard`.
+
+## Open questions (resolved, kept for history)
 1. **Purpose:** personal tool only, or also a portfolio piece for DS/quant-dev applications? (Sets stack and test bar.)
 2. Stack: July chose FastAPI + vanilla JS + 2–3 s polling. Keep, or go stdlib/JSONL-watching per ponytail?
 3. **Location:** repo is on `/mnt/c`, but it's a Linux-toolchain project → per Machine Layout should move to
    `/home/jvmead/projects/claude-dashboard` (remap memory slug). Only 1 commit, so cheap to move.
-4. Try `claude agents` in a side terminal for a session or two first. What's missing defines v1's edge.
+4. ~~Try `claude agents` first.~~ Done 2026-10-18, see "What changed" table.
