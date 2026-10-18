@@ -82,12 +82,18 @@ prices. They have not been fitted to the samples.
 
 ## Known issues (v1)
 
-- The burn rate isn't always shown in the strip.
+- Dismissing a permission prompt with Esc leaves 🟥 until you send the next message, because Claude
+  Code fires no `Stop` hook on an interrupt.
+- With parallel tool calls in one turn, a sibling call finishing can clear 🟥 while a prompt is still open.
+- A session with no transcript never shows as parked.
+- The hook log is re-read in full on every poll.
+- The server doesn't check the `Host` header, so DNS rebinding isn't blocked. It binds to localhost only.
+- Durations under a minute show as "now".
 
 ## Develop
 
 ```bash
-python -m pytest        # 52 tests, no network
+python -m pytest        # 56 tests, no network
 ruff check dashboard tests
 ```
 

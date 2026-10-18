@@ -36,17 +36,18 @@ function stateText(r) {
 
 function usageText(u, now) {
   if (u.error) return `5h: unavailable (${u.error})`;
-  if (u.block_start === null) return "5h: idle window";
-  const reset = `resets ${dur(u.block_end - now)}`;
-  if (!u.samples) return `5h: ${kilo(u.used)} used · no past limit on record · ${reset} · ${u.label}`;
+  const burn = `${kilo(u.burn_per_min)}/min`;
+  if (u.block_start === null) return `5h: idle window · ${burn}`;
+  const tail = `${burn} · resets ${dur(u.block_end - now)} · ${u.label}`;
+  if (!u.samples) return `5h: ${kilo(u.used)} used · no past limit on record · ${tail}`;
   const pct = Math.round((100 * u.used) / u.ceiling_median);
-  if (u.above_samples) return `5h: ${pct}% · above all ${u.samples} past limits · ${reset} · ${u.label}`;
+  if (u.above_samples) return `5h: ${pct}% · above all ${u.samples} past limits · ${tail}`;
   let left = "";
   if (u.minutes_left_hi !== null) {
     const lo = u.minutes_left_lo === null ? 0 : u.minutes_left_lo * 60;
     left = ` · ≈${dur(lo)}–${dur(u.minutes_left_hi * 60)} left`;
   }
-  return `5h: ~${pct}% (${u.samples} samples)${left} · ${reset} · ${u.label}`;
+  return `5h: ~${pct}% (${u.samples} samples)${left} · ${tail}`;
 }
 
 function toggleRow(id) {
