@@ -78,6 +78,15 @@ or other machines is invisible to it, which is why it is labelled "this machine 
 (cache reads are cheap, output is dear, Haiku costs less than Opus) are rough ratios from list
 prices. They have not been fitted to the samples.
 
+## Known issues (v1)
+
+- 🟥 *needs approval* rarely shows. The hook stamps whole seconds and is compared with a
+  nanosecond transcript mtime, so a prompt usually looks older than the transcript write it caused.
+- One vanished file or malformed record fails the whole snapshot, and the page then says "server
+  unreachable".
+- Stale `meta.json` files with no `finished` key can keep a resumed session at 🟦.
+- The burn rate isn't always shown in the strip.
+
 ## Develop
 
 ```bash
