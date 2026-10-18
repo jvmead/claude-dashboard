@@ -1,11 +1,10 @@
 """Read Claude Code session transcripts (append-only JSONL, possibly mid-write)."""
 import json
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 
-TAIL_BYTES = 512 * 1024
 ACTION_CHARS = 60
 # Tool input keys worth showing, in order of preference.
 ACTION_KEYS = ("command", "file_path", "description", "pattern", "url", "prompt")
@@ -23,14 +22,9 @@ def parse_ts(ts: str) -> float:
     return datetime.fromisoformat(ts).timestamp()
 
 
-def iter_records(path: Path, tail_bytes: int | None = None) -> Iterator[dict]:
+def iter_records(path: Path) -> Iterator[dict]:
     """Yield JSON records, skipping malformed lines (e.g. a half-written last line)."""
     with path.open("rb") as f:
-        if tail_bytes is not None:
-            size = f.seek(0, 2)
-            f.seek(max(0, size - tail_bytes))
-            if size > tail_bytes:
-                f.readline()  # drop the partial first line
         for line in f:
             try:
                 rec = json.loads(line)
@@ -59,20 +53,48 @@ def describe_block(block: dict) -> str | None:
     return None
 
 
-def summarize(path: Path) -> SessionSummary:
-    summary = SessionSummary(0, None, "", path.stat().st_mtime)
-    for rec in iter_records(path, TAIL_BYTES):
-        if rec.get("timestamp"):
-            summary.last_activity = parse_ts(rec["timestamp"])
-        if rec.get("type") != "assistant":
+# path -> (bytes consumed, running summary, activity timestamps). Transcripts are append-only,
+# so each refresh only parses what was written since the last one.
+_scanned: dict[Path, tuple[int, SessionSummary, list[float]]] = {}
+
+
+def _apply(rec: dict, summary: SessionSummary, stamps: list[float]) -> None:
+    if rec.get("timestamp"):
+        summary.last_activity = parse_ts(rec["timestamp"])
+        stamps.append(summary.last_activity)
+    if rec.get("type") != "assistant":
+        return
+    msg = rec.get("message") or {}
+    if msg.get("usage") and not rec.get("isApiErrorMessage"):
+        summary.context_tokens = context_tokens(msg["usage"])
+        summary.model = msg.get("model")
+    content = msg.get("content")
+    for block in content if isinstance(content, list) else []:
+        action = describe_block(block)
+        if action:
+            summary.last_action = action
+
+
+def scan(path: Path) -> tuple[SessionSummary, tuple[float, ...]]:
+    """Summary plus all activity timestamps, reading only complete lines added since last call."""
+    size = path.stat().st_size
+    offset, summary, stamps = _scanned.get(path, (0, None, None))
+    if summary is None or size < offset:  # first sight, or file was replaced
+        offset, summary, stamps = 0, SessionSummary(0, None, "", path.stat().st_mtime), []
+    with path.open("rb") as f:
+        f.seek(offset)
+        data = f.read(size - offset)
+    complete = data[: data.rfind(b"\n") + 1]  # a half-written last line waits for next time
+    for line in complete.splitlines():
+        try:
+            rec = json.loads(line)
+        except ValueError:
             continue
-        msg = rec.get("message") or {}
-        if msg.get("usage") and not rec.get("isApiErrorMessage"):
-            summary.context_tokens = context_tokens(msg["usage"])
-            summary.model = msg.get("model")
-        content = msg.get("content")
-        for block in content if isinstance(content, list) else []:
-            action = describe_block(block)
-            if action:
-                summary.last_action = action
-    return summary
+        if isinstance(rec, dict):
+            _apply(rec, summary, stamps)
+    _scanned[path] = (offset + len(complete), summary, stamps)
+    return replace(summary), tuple(stamps)
+
+
+def summarize(path: Path) -> SessionSummary:
+    return scan(path)[0]

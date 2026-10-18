@@ -8,7 +8,7 @@ from pathlib import Path
 from dashboard.discovery import DiscoveryError, LiveSession
 from dashboard.status import SORT_ORDER, approval_pending, classify
 from dashboard.subagents import SubagentNode, is_specialist, load_subagents, max_depth, outstanding, walk
-from dashboard.transcripts import TAIL_BYTES, find_transcript, iter_records, parse_ts, summarize
+from dashboard.transcripts import find_transcript, iter_records, scan
 from dashboard.usage import file_records, estimate
 
 CONTEXT_LIMIT = int(os.environ.get("CLAUDE_CONTEXT_LIMIT", 200_000))
@@ -76,12 +76,11 @@ def session_row(claude_dir: Path, s: LiveSession, prompts: dict[str, float], now
     if transcript is None:
         row["state"] = classify(s.busy, 0, 0, False).value
         return row
-    summary = summarize(transcript)
+    summary, stamps = scan(transcript)
     roots = load_subagents(transcript)
     nodes = list(walk(roots))
     files = _files(transcript)
     last_write = max(f.stat().st_mtime for f in files)
-    stamps = [parse_ts(r["timestamp"]) for r in iter_records(transcript, TAIL_BYTES) if r.get("timestamp")]
     row.update(
         last_action=summary.last_action or "—",
         context_tokens=summary.context_tokens,

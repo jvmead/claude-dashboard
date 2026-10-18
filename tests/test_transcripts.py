@@ -43,3 +43,26 @@ def test_multiline_action_is_collapsed(claude_dir):
     p = claude_dir.add_session("s1", [assistant("2026-10-18T10:00:00Z",
                                                 tool=("Bash", {"command": "cd x &&\n  pytest"}))])
     assert summarize(p).last_action == "Bash: cd x && pytest"
+
+
+def test_incremental_scan_sees_appends_and_waits_for_complete_lines(claude_dir):
+    import json
+    from dashboard.transcripts import scan
+    p = claude_dir.add_session("s1", [assistant("2026-10-18T10:00:00Z", text="one")])
+    summary, stamps = scan(p)
+    assert summary.last_action == "one" and len(stamps) == 1
+    line = json.dumps(assistant("2026-10-18T10:05:00Z", text="two"))
+    with p.open("a") as f:
+        f.write(line[:20])
+    assert scan(p)[0].last_action == "one"
+    with p.open("a") as f:
+        f.write(line[20:] + "\n")
+    summary, stamps = scan(p)
+    assert summary.last_action == "two" and len(stamps) == 2
+
+
+def test_whole_history_not_just_tail(claude_dir):
+    from dashboard.transcripts import scan
+    blob = {"type": "api-request-blob", "timestamp": "2026-10-18T10:00:30Z", "body": "x" * 600_000}
+    p = claude_dir.add_session("s1", [assistant("2026-10-18T10:00:00Z", text="early"), blob])
+    assert scan(p)[1][0] == 1792317600.0
