@@ -10,7 +10,7 @@ from dashboard.jobs import load_jobs
 from dashboard.status import SORT_ORDER, classify
 from dashboard.subagents import SubagentNode, is_specialist, load_subagents, max_depth, outstanding, running, walk
 from dashboard.transcripts import find_transcript, iter_records, scan
-from dashboard.usage import estimate, file_records
+from dashboard.usage import estimate, file_records, peak
 
 CONTEXT_LIMIT = int(os.environ.get("CLAUDE_CONTEXT_LIMIT", 200_000))
 TIMELINE_S = 20 * 60
@@ -146,7 +146,7 @@ def build_snapshot(claude_dir: Path, sessions_fn: Callable[[], list[LiveSession]
                    ceiling_cache: Path, log_dir: Path | None = None) -> dict:
     snap = {"now": now, "error": None, "sessions": [], "context_limit": CONTEXT_LIMIT,
             "hook_installed": is_installed(claude_dir / "settings.json"),
-            "usage": _safe_estimate(claude_dir, now, ceiling_cache),
+            "usage": _safe_estimate(claude_dir, now, ceiling_cache), "peak": peak(now),
             "jobs": [asdict(j) for j in load_jobs(log_dir, now)]}
     try:
         sessions = sessions_fn()

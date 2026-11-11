@@ -1,7 +1,7 @@
 import json
 from datetime import UTC, datetime
 
-from dashboard.usage import block_start, ceiling_samples, collect, estimate, limits, week_yellow, weighted
+from dashboard.usage import block_start, ceiling_samples, collect, estimate, limits, peak, week_yellow, weighted
 from tests.conftest import assistant
 
 H = 3600
@@ -112,3 +112,15 @@ def test_limits_adds_todays_weekly_threshold(claude_dir):
     week = {"used_percentage": 41.0, "resets_at": reset}
     (d / "usage.json").write_text(json.dumps({"ts": now, "rate_limits": {"seven_day": week}}))
     assert limits(claude_dir.root, now)["seven_day"] == {**week, "yellow": 50}
+
+
+def test_peak_follows_pacific_time_across_dst():
+    def at(*args) -> dict:
+        return peak(datetime(*args, tzinfo=UTC).timestamp())
+
+    assert at(2026, 11, 11, 12, 30) == {"on": False, "change_s": 1800}  # Wed, PST: peak is 13-19 UTC
+    assert at(2026, 11, 11, 18, 0) == {"on": True, "change_s": 3600}
+    assert at(2026, 7, 15, 12, 0) == {"on": True, "change_s": 6 * 3600}  # Wed, PDT: peak is 12-18 UTC
+    assert at(2026, 3, 9, 12, 0)["on"] and not at(2026, 3, 6, 12, 0)["on"]  # DST starts Sun 8 Mar
+    assert at(2026, 11, 2, 12, 30)["on"] is False and at(2026, 10, 30, 12, 30)["on"]  # ends Sun 1 Nov
+    assert at(2026, 11, 13, 20, 0) == {"on": False, "change_s": (2 * 24 + 17) * 3600}  # Fri eve to Mon 13 UTC
