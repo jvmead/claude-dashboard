@@ -21,6 +21,7 @@ code, .mono { font-family: ui-monospace, "Cascadia Code", Menlo, monospace; font
 .pill, .badge { display: inline-block; padding: 2px 9px; border-radius: 11px; color: #fff;
                 font-weight: 600; font-size: 12px; white-space: nowrap; cursor: pointer; }
 .usage { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.lim-yellow { color: #f59f00; font-weight: 700; } .lim-orange { color: #e8590c; font-weight: 700; } .lim-red { color: #e03131; font-weight: 700; }
 .toggle { border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; }
 .s-approval { background: var(--approval); } .s-your_turn { background: var(--your_turn); }
 .s-waiting { background: var(--waiting); } .s-working { background: var(--working); }
@@ -28,7 +29,16 @@ code, .mono { font-family: ui-monospace, "Cascadia Code", Menlo, monospace; font
 
 .banner { padding: 8px 12px; background: rgba(217,72,15,.12); color: var(--approval); font-weight: 600; }
 .note { padding: 8px 12px; color: var(--muted); font-size: 11px; }
-body.mini main, body.mini .note { display: none; }
+body.mini main, body.mini .note, body.mini .jobs { display: none; }
+
+.jobs .head { padding: 10px 12px 4px; color: var(--muted); font-size: 11px; font-weight: 600;
+              text-transform: uppercase; letter-spacing: .04em; }
+.job { display: grid; grid-template-columns: minmax(90px,200px) 120px 1fr 44px; gap: 10px;
+       align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--line); }
+.job > * { min-width: 0; }
+.job b, .job .action { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job .action { color: var(--muted); }
+.job .idle { text-align: right; color: var(--muted); }
 
 .row { display: grid; grid-template-columns: 16px minmax(90px,150px) 120px 1fr 90px 44px;
        gap: 10px; align-items: center; padding: 7px 12px; border-bottom: 1px solid var(--line);

@@ -14,7 +14,10 @@ you look when you want to.
 
 Click a session to open its timeline for the last 20 minutes: when the parent was active, one lane
 per subagent, indented by spawn depth, with type, specialist or general, description, runtime and
-whether it has finished. The strip at the top also estimates where you are in the 5-hour usage window.
+whether it has finished. The strip at the top also shows where you are in the 5-hour and weekly usage
+windows. It uses the real numbers from `~/.claude/dashboard/usage.json` when a status line script
+writes them there, from the `rate_limits` field Claude Code passes it, and falls back to an estimate
+from local transcripts otherwise.
 
 ## Run
 

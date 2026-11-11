@@ -6,6 +6,7 @@ from pathlib import Path
 
 from dashboard.discovery import DiscoveryError, LiveSession
 from dashboard.install import is_installed
+from dashboard.jobs import load_jobs
 from dashboard.status import SORT_ORDER, classify
 from dashboard.subagents import SubagentNode, is_specialist, load_subagents, max_depth, outstanding, running, walk
 from dashboard.transcripts import find_transcript, iter_records, scan
@@ -142,10 +143,11 @@ def _safe_estimate(claude_dir: Path, now: float, ceiling_cache: Path) -> dict:
 
 
 def build_snapshot(claude_dir: Path, sessions_fn: Callable[[], list[LiveSession]], now: float,
-                   ceiling_cache: Path) -> dict:
+                   ceiling_cache: Path, log_dir: Path | None = None) -> dict:
     snap = {"now": now, "error": None, "sessions": [], "context_limit": CONTEXT_LIMIT,
             "hook_installed": is_installed(claude_dir / "settings.json"),
-            "usage": _safe_estimate(claude_dir, now, ceiling_cache)}
+            "usage": _safe_estimate(claude_dir, now, ceiling_cache),
+            "jobs": [asdict(j) for j in load_jobs(log_dir, now)]}
     try:
         sessions = sessions_fn()
     except DiscoveryError as e:

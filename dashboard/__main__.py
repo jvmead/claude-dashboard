@@ -1,4 +1,4 @@
-"""python -m dashboard [--port 8765] [--claude-dir ~/.claude] [--open]"""
+"""python -m dashboard [--port 8765] [--claude-dir ~/.claude] [--logs DIR] [--open]"""
 
 import argparse
 import errno
@@ -18,10 +18,12 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="open a browser tab; if the port is already taken, assume the dashboard is running and just open it",
     )
+    p.add_argument("--logs", type=Path, help="folder of background-job *.log files to list, with tqdm progress if present")
     args = p.parse_args(argv)
     url = f"http://127.0.0.1:{args.port}"
     try:
-        server = make_server(args.port, args.claude_dir, list_sessions, args.claude_dir / "dashboard" / "ceilings.json")
+        server = make_server(args.port, args.claude_dir, list_sessions, args.claude_dir / "dashboard" / "ceilings.json",
+                             args.logs)
     except OSError as e:
         if args.open and e.errno == errno.EADDRINUSE:
             webbrowser.open(url)

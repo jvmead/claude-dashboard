@@ -1,6 +1,7 @@
+import json
 from datetime import UTC, datetime
 
-from dashboard.usage import block_start, ceiling_samples, collect, estimate, weighted
+from dashboard.usage import block_start, ceiling_samples, collect, estimate, limits, weighted
 from tests.conftest import assistant
 
 H = 3600
@@ -78,3 +79,16 @@ def test_usage_above_every_sample_is_flagged(claude_dir, tmp_path):
     claude_dir.add_session("s1", [assistant(iso(now - 10 * 60), usage=U, msg_id="a")])
     e = estimate(claude_dir.root, now, tmp_path / "c.json")
     assert e["above_samples"] and e["minutes_left_lo"] is None and e["minutes_left_hi"] is None
+
+
+def test_limits_from_status_line_snapshot(claude_dir):
+    now = 1_800_000_000
+    assert limits(claude_dir.root, now) is None  # no status line yet
+    d = claude_dir.root / "dashboard"
+    d.mkdir(parents=True)
+    five = {"used_percentage": 23.0, "resets_at": now + H}
+    week = {"used_percentage": 41.0, "resets_at": now - 1}  # past its reset: dropped
+    (d / "usage.json").write_text(json.dumps({"ts": now - 60, "rate_limits": {"five_hour": five, "seven_day": week}}))
+    assert limits(claude_dir.root, now) == {"ts": now - 60, "five_hour": five}
+    (d / "usage.json").write_text("{bad")
+    assert limits(claude_dir.root, now) is None

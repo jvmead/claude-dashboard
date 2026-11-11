@@ -25,6 +25,7 @@ function el(tag, cls, text) {
 function dur(s) {
   if (s < 60) return "now";
   if (s < 3600) return `${Math.round(s / 60)}m`;
+  if (s >= 86400) return `${Math.floor(s / 86400)}d${Math.floor((s % 86400) / 3600)}h`;
   return `${Math.floor(s / 3600)}h${String(Math.round((s % 3600) / 60)).padStart(2, "0")}`;
 }
 
@@ -32,6 +33,37 @@ function kilo(n) { return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : `${Math.round(
 
 function stateText(r) {
   return r.state === "waiting" ? `waiting · ${r.outstanding}/${r.total_subagents}` : LABEL[r.state];
+}
+
+// Weekly pace: 20% a day (none at the weekend), threshold halfway through each day's budget.
+// Yellow at the threshold, orange 5 points above, red 8 above. Day 0 starts at the reset
+// (Tue 05:00 for James), so Tue..Mon; the weekend holds Friday's thresholds.
+const WEEK_YELLOW = [10, 30, 50, 70, 70, 70, 90];
+
+function limitLevel(pct, yellow, orange, red) {
+  return pct >= red ? "lim-red" : pct >= orange ? "lim-orange" : pct >= yellow ? "lim-yellow" : "";
+}
+
+// [text, class, tooltip] per window.
+function limitParts(L, now) {
+  const text = (w, name) => `${name}: ${Math.round(w.used_percentage)}% · resets ${dur(w.resets_at - now)}`;
+  const f = L.five_hour, w = L.seven_day;
+  const parts = [f ? [text(f, "5h"), limitLevel(f.used_percentage, 80, 80, 90), "orange at 80%, red at 90%"] : ["5h: –"]];
+  if (w) {
+    const day = Math.min(6, Math.max(0, Math.floor((now - (w.resets_at - 7 * 86400)) / 86400)));
+    const y = WEEK_YELLOW[day];
+    parts.push([text(w, "wk"), limitLevel(w.used_percentage, y, y + 5, y + 8),
+                `today: yellow at ${y}%, orange at ${y + 5}%, red at ${y + 8}%`]);
+  } else parts.push(["wk: –"]);
+  return parts;
+}
+
+// Strip content as [text, class, tooltip] parts, joined with " · ".
+function usageParts(u, now) {
+  const L = !u.error && u.limits;
+  if (!L) return [[usageText(u, now)]];
+  const age = now - L.ts;  // real numbers from the status line; usageText's estimate is the fallback
+  return [...limitParts(L, now), [`${kilo(u.burn_per_min)}/min`], [`as of ${dur(age)}${age < 60 ? "" : " ago"}`]];
 }
 
 function usageText(u, now) {
@@ -64,7 +96,11 @@ function renderStrip(s) {
     p.onclick = () => { document.body.classList.remove("mini"); store.set("mini", false); toggleRow(r.session_id); };
     return p;
   }));
-  document.getElementById("usage").textContent = usageText(s.usage, s.now);
+  document.getElementById("usage").replaceChildren(...usageParts(s.usage, s.now).flatMap(([text, cls, tip], i) => {
+    const span = el("span", cls, text);
+    if (tip) span.title = tip;
+    return i ? [" · ", span] : [span];
+  }));
 }
 
 function seg(track, t0, t1, now, cls) {
@@ -146,12 +182,34 @@ function renderList(s) {
   list.replaceChildren(...rows);
 }
 
+function renderJobs(s) {
+  const box = document.getElementById("jobs");
+  const jobs = s.jobs || [];
+  box.hidden = !jobs.length;
+  box.replaceChildren(el("div", "head", "Background jobs"), ...jobs.map(j => {
+    const row = el("div", "job");
+    const bar = el("div", "bar");
+    if (j.pct !== null) {
+      const fill = el("i");
+      fill.style.width = `${j.pct}%`;
+      bar.append(fill);
+    }
+    const name = el("b", null, j.name);
+    name.title = j.path;
+    row.append(name, bar, el("span", "action", j.pct === null ? "no tqdm progress" : `${j.pct}% · ${j.detail}`),
+               el("span", "idle", dur(j.quiet_s)));
+    row.title = `last written ${dur(j.quiet_s)} ago`;
+    return row;
+  }));
+}
+
 function render(s) {
   const banner = document.getElementById("banner");
   banner.hidden = !s.error;
   banner.textContent = s.error ? `Can't list sessions: ${s.error}` : "";
   renderStrip(s);
   renderList(s);
+  renderJobs(s);
   document.getElementById("note").textContent = s.hook_installed ? "" :
     "Permission prompts (🟥) aren't detected yet: install the hook with `python -m dashboard.install`.";
   const waiting = s.sessions.filter(r => r.state === "approval" || r.state === "your_turn").length;

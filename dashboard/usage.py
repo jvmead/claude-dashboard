@@ -101,6 +101,19 @@ def _minutes_to(ceiling: float | None, used: float, burn: float) -> float | None
     return (ceiling - used) / burn
 
 
+def limits(claude_dir: Path, now: float) -> dict | None:
+    """Real plan usage from ~/.claude/dashboard/usage.json, written by the status line script
+    from the rate_limits Claude Code passes it. Windows past their reset are dropped; None
+    when the file is missing, unreadable or holds nothing current."""
+    try:
+        snap = json.loads((claude_dir / "dashboard" / "usage.json").read_text(encoding="utf-8"))
+        windows = {k: w for k, w in (snap.get("rate_limits") or {}).items()
+                   if k in ("five_hour", "seven_day") and w and w.get("resets_at", 0) > now}
+    except (OSError, ValueError, AttributeError):
+        return None
+    return {"ts": snap.get("ts"), **windows} if windows else None
+
+
 def estimate(claude_dir: Path, now: float, cache_path: Path) -> dict:
     records = collect(claude_dir, now - 2 * WINDOW_S, now)
     start = block_start([t for t, _, _ in records], now)
@@ -122,4 +135,5 @@ def estimate(claude_dir: Path, now: float, cache_path: Path) -> dict:
         "minutes_left_hi": _minutes_to(max(samples, default=None), used, burn),
         "above_samples": bool(samples) and used > max(samples),
         "label": "this machine only",
+        "limits": limits(claude_dir, now),
     }
