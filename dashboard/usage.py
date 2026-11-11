@@ -5,7 +5,7 @@ The real ceiling isn't stored anywhere; we infer it from past five_hour rejectio
 """
 import json
 import statistics
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 
@@ -117,6 +117,39 @@ def week_yellow(resets_at: float, now: float) -> float:
     done = sum(datetime.fromtimestamp(start + d * DAY_S).weekday() in WORKDAYS for d in range(today + 1))
 
     return (max(done, 1) - 0.5) * 100 / len(WORKDAYS)  # max: days off before the first working day use its threshold
+
+
+PEAK_HOURS_PT = (5, 11)  # weekday hours, Pacific time, when 5-hour limits drain faster
+
+
+def pacific_offset_h(t: datetime) -> int:
+    """UTC offset of US Pacific time at instant t: -7 in daylight time, -8 otherwise."""
+    # ponytail: hard-codes the US rule in force since 2007 (second Sunday of March to first
+    # Sunday of November, 02:00 local) because Windows Python has no tz database without the
+    # tzdata package. Upgrade path: zoneinfo("America/Los_Angeles") if tzdata becomes a dependency.
+    def sunday(month: int, nth: int, hour_utc: int) -> datetime:
+        first = datetime(t.year, month, 1, hour_utc, tzinfo=UTC)
+        return first + timedelta(days=(6 - first.weekday()) % 7 + 7 * (nth - 1))
+
+    return -7 if sunday(3, 2, 10) <= t < sunday(11, 1, 9) else -8
+
+
+def peak(now: float) -> dict:
+    """Whether now is in Anthropic's weekday peak window, and seconds until that changes."""
+    def local(ts: float) -> datetime:
+        t = datetime.fromtimestamp(ts, UTC)
+        return t + timedelta(hours=pacific_offset_h(t))
+
+    def is_peak(ts: float) -> bool:
+        t = local(ts)
+        return t.weekday() in WORKDAYS and PEAK_HOURS_PT[0] <= t.hour < PEAK_HOURS_PT[1]
+
+    # step forward to the next whole Pacific hour where the state flips (at most a weekend away)
+    on = is_peak(now)
+    t = now - now % 3600 + 3600  # offsets are whole hours, so UTC and Pacific hours align
+    while is_peak(t) == on and t < now + 4 * DAY_S:
+        t += 3600
+    return {"on": on, "change_s": t - now}
 
 
 def limits(claude_dir: Path, now: float) -> dict | None:

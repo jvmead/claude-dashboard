@@ -101,6 +101,15 @@ reset in the middle of the day puts Friday evening and Saturday morning in the s
 is fixed. It does not re-plan from what you have already used. The working days are the `WORKDAYS`
 constant in `usage.py`.
 
+### Peak hours
+
+The strip starts with `peak · ends 2h56` (orange) or `off-peak · peak in 5h`. Peak is Anthropic's
+weekday window of 05:00 to 11:00 US Pacific, announced in March 2026, when 5-hour limits drain faster.
+Weekly limits are not affected. The window is `PEAK_HOURS_PT` in `usage.py`. US daylight saving is
+coded by hand because Windows Python has no timezone database without `tzdata`, so the window
+moves correctly in UTC and in local time. Anthropic may change or drop the rule; check before
+trusting the flag.
+
 ## Known issues (v1)
 
 - Dismissing a permission prompt with Esc leaves 🟥 until you send the next message, because Claude

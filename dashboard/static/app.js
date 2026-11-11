@@ -62,6 +62,13 @@ function usageParts(u, now) {
   return [...limitParts(L, now), [`${kilo(u.burn_per_min)}/min`], [`as of ${dur(age)}${age < 60 ? "" : " ago"}`]];
 }
 
+// Anthropic's weekday peak window (05:00-11:00 Pacific), when 5-hour limits drain faster.
+function peakPart(p) {
+  if (!p) return [];
+  const tip = "Weekdays 05:00-11:00 Pacific: 5-hour limits drain faster";
+  return [p.on ? [`peak · ends ${dur(p.change_s)}`, "lim-orange", tip] : [`off-peak · peak in ${dur(p.change_s)}`, "", tip]];
+}
+
 function usageText(u, now) {
   if (u.error) return `5h: unavailable (${u.error})`;
   const burn = `${kilo(u.burn_per_min)}/min`;
@@ -92,7 +99,7 @@ function renderStrip(s) {
     p.onclick = () => { document.body.classList.remove("mini"); store.set("mini", false); toggleRow(r.session_id); };
     return p;
   }));
-  document.getElementById("usage").replaceChildren(...usageParts(s.usage, s.now).flatMap(([text, cls, tip], i) => {
+  document.getElementById("usage").replaceChildren(...[...peakPart(s.peak), ...usageParts(s.usage, s.now)].flatMap(([text, cls, tip], i) => {
     const span = el("span", cls, text);
     if (tip) span.title = tip;
     return i ? [" · ", span] : [span];
