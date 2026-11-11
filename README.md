@@ -14,7 +14,10 @@ you look when you want to.
 
 Click a session to open its timeline for the last 20 minutes: when the parent was active, one lane
 per subagent, indented by spawn depth, with type, specialist or general, description, runtime and
-whether it has finished. The strip at the top also estimates where you are in the 5-hour usage window.
+whether it has finished. The strip at the top also shows where you are in the 5-hour and weekly usage
+windows. It uses the real numbers from `~/.claude/dashboard/usage.json` when a status line script
+writes them there, from the `rate_limits` field Claude Code passes it, and falls back to an estimate
+from local transcripts otherwise.
 
 ## Run
 
@@ -67,7 +70,7 @@ claude agents --json ──────────────┐  live session
 | `status.py` | the five states, as a pure function |
 | `transcripts.py` | incremental JSONL reader: after the first read, each refresh parses only the bytes appended since |
 | `subagents.py` | builds the tree from `meta.json` files |
-| `usage.py` | 5-hour block, weighted tokens, ceiling inferred from past rejections |
+| `usage.py` | 5-hour block, weighted tokens, ceiling inferred from past rejections, weekly pace threshold |
 | `snapshot.py` | joins the above into one JSON document |
 | `server.py` | `http.server`, whitelisted assets, snapshot cached for 2 s |
 
@@ -79,6 +82,24 @@ those samples, and a time-left range at the current burn rate. Usage from claude
 or other machines is invisible to it, which is why it is labelled "this machine only". Token weights
 (cache reads are cheap, output is dear, Haiku costs less than Opus) are rough ratios from list
 prices. They have not been fitted to the samples.
+
+### Weekly pace colours
+
+When the real numbers are available, the weekly figure is coloured by how far ahead of an even
+spend you are. The window is the 7 days before `resets_at`, so the scheme follows whenever your
+own week resets. The budget is split evenly over the Monday to Friday days in that window, 20% each.
+The figure turns yellow halfway through today's share, orange 5 points above that and red 8 above.
+Days off hold the last working day's threshold. Hover over the figure to see today's values.
+
+| Reset | Day 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|
+| Tuesday | 10 | 30 | 50 | 70 | 70 | 70 | 90 |
+| Monday | 10 | 30 | 50 | 70 | 90 | 90 | 90 |
+
+A day here is a 24-hour block counted from the reset, labelled by the weekday it starts on, so a
+reset in the middle of the day puts Friday evening and Saturday morning in the same block. The pace
+is fixed. It does not re-plan from what you have already used. The working days are the `WORKDAYS`
+constant in `usage.py`.
 
 ## Known issues (v1)
 

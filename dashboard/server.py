@@ -20,9 +20,11 @@ SNAPSHOT_TTL_S = 2.0
 class SnapshotCache:
     """Recompute at most every SNAPSHOT_TTL_S, however many tabs are polling."""
 
-    def __init__(self, claude_dir: Path, sessions_fn: Callable[[], list[LiveSession]], ceiling_cache: Path):
+    def __init__(self, claude_dir: Path, sessions_fn: Callable[[], list[LiveSession]], ceiling_cache: Path,
+                 log_dir: Path | None = None):
         self.args = (claude_dir, sessions_fn)
         self.ceiling_cache = ceiling_cache
+        self.log_dir = log_dir
         self.lock = threading.Lock()
         self.at = 0.0
         self.body = b""
@@ -31,7 +33,7 @@ class SnapshotCache:
         with self.lock:
             now = time.time()
             if now - self.at > SNAPSHOT_TTL_S:
-                self.body = json.dumps(build_snapshot(*self.args, now, self.ceiling_cache)).encode()
+                self.body = json.dumps(build_snapshot(*self.args, now, self.ceiling_cache, self.log_dir)).encode()
                 self.at = now
             return self.body
 
@@ -69,6 +71,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def make_server(port: int, claude_dir: Path, sessions_fn: Callable[[], list[LiveSession]],
-                ceiling_cache: Path) -> ThreadingHTTPServer:
-    cache = SnapshotCache(claude_dir, sessions_fn, ceiling_cache)
+                ceiling_cache: Path, log_dir: Path | None = None) -> ThreadingHTTPServer:
+    cache = SnapshotCache(claude_dir, sessions_fn, ceiling_cache, log_dir)
     return ThreadingHTTPServer(("127.0.0.1", port), partial(Handler, cache=cache))

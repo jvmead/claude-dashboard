@@ -1,6 +1,7 @@
+import json
 from datetime import UTC, datetime
 
-from dashboard.usage import block_start, ceiling_samples, collect, estimate, weighted
+from dashboard.usage import block_start, ceiling_samples, collect, estimate, limits, week_yellow, weighted
 from tests.conftest import assistant
 
 H = 3600
@@ -78,3 +79,36 @@ def test_usage_above_every_sample_is_flagged(claude_dir, tmp_path):
     claude_dir.add_session("s1", [assistant(iso(now - 10 * 60), usage=U, msg_id="a")])
     e = estimate(claude_dir.root, now, tmp_path / "c.json")
     assert e["above_samples"] and e["minutes_left_lo"] is None and e["minutes_left_hi"] is None
+
+
+def test_limits_from_status_line_snapshot(claude_dir):
+    now = 1_800_000_000
+    assert limits(claude_dir.root, now) is None  # no status line yet
+    d = claude_dir.root / "dashboard"
+    d.mkdir(parents=True)
+    five = {"used_percentage": 23.0, "resets_at": now + H}
+    week = {"used_percentage": 41.0, "resets_at": now - 1}  # past its reset: dropped
+    (d / "usage.json").write_text(json.dumps({"ts": now - 60, "rate_limits": {"five_hour": five, "seven_day": week}}))
+    assert limits(claude_dir.root, now) == {"ts": now - 60, "five_hour": five}
+    (d / "usage.json").write_text("{bad")
+    assert limits(claude_dir.root, now) is None
+
+
+def test_week_yellow_follows_the_reset_weekday():
+    def week(reset: datetime) -> list[float]:  # threshold at noon-ish of each day of the window
+        r = reset.timestamp()
+        return [week_yellow(r, r - 7 * 86400 + d * 86400 + H) for d in range(7)]
+
+    assert week(datetime(2026, 11, 17, 5)) == [10, 30, 50, 70, 70, 70, 90]  # Tue reset: Tue..Mon
+    assert week(datetime(2026, 11, 16, 9)) == [10, 30, 50, 70, 90, 90, 90]  # Mon reset: Mon..Sun
+    assert week(datetime(2026, 11, 14, 9)) == [10, 10, 10, 30, 50, 70, 90]  # Sat reset: Sat..Fri
+
+
+def test_limits_adds_todays_weekly_threshold(claude_dir):
+    reset = datetime(2026, 11, 17, 5).timestamp()
+    now = reset - 5 * 86400 + H  # Thursday of a Tuesday-reset week
+    d = claude_dir.root / "dashboard"
+    d.mkdir(parents=True)
+    week = {"used_percentage": 41.0, "resets_at": reset}
+    (d / "usage.json").write_text(json.dumps({"ts": now, "rate_limits": {"seven_day": week}}))
+    assert limits(claude_dir.root, now)["seven_day"] == {**week, "yellow": 50}
