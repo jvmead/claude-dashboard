@@ -5,6 +5,7 @@ The real ceiling isn't stored anywhere; we infer it from past five_hour rejectio
 """
 import json
 import statistics
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 
@@ -17,6 +18,8 @@ BURN_WINDOW_S = 30 * 60
 TOKEN_WEIGHTS = {"input_tokens": 1.0, "cache_creation_input_tokens": 1.25,
                  "cache_read_input_tokens": 0.1, "output_tokens": 5.0}
 MODEL_FACTORS = {"opus": 1.0, "sonnet": 0.6, "haiku": 0.2}
+DAY_S = 86400
+WORKDAYS = frozenset(range(5))  # Mon..Fri as datetime.weekday(); the weekly budget is spread over these
 
 Record = tuple[float, float, str]  # (timestamp, weight, message id)
 
@@ -101,15 +104,33 @@ def _minutes_to(ceiling: float | None, used: float, burn: float) -> float | None
     return (ceiling - used) / burn
 
 
+def week_yellow(resets_at: float, now: float) -> float:
+    """Weekly usage (%) at which today turns yellow: halfway through today's share of an even
+    spend over the window's working days. Days off hold the last working day's threshold."""
+    # ponytail: a day is a 24 h block counted from the reset and takes the local weekday of its
+    # start, so a mid-afternoon reset puts Friday evening and Saturday morning in one "Friday".
+    # Upgrade path: integrate working hours instead of counting blocks.
+    start = resets_at - 7 * DAY_S
+    today = min(6, max(0, int((now - start) // DAY_S)))
+
+    # working days in the window up to and including today
+    done = sum(datetime.fromtimestamp(start + d * DAY_S).weekday() in WORKDAYS for d in range(today + 1))
+
+    return (max(done, 1) - 0.5) * 100 / len(WORKDAYS)  # max: days off before the first working day use its threshold
+
+
 def limits(claude_dir: Path, now: float) -> dict | None:
     """Real plan usage from ~/.claude/dashboard/usage.json, written by the status line script
     from the rate_limits Claude Code passes it. Windows past their reset are dropped; None
-    when the file is missing, unreadable or holds nothing current."""
+    when the file is missing, unreadable or holds nothing current. The weekly window gains
+    "yellow", today's pace threshold."""
     try:
         snap = json.loads((claude_dir / "dashboard" / "usage.json").read_text(encoding="utf-8"))
         windows = {k: w for k, w in (snap.get("rate_limits") or {}).items()
                    if k in ("five_hour", "seven_day") and w and w.get("resets_at", 0) > now}
-    except (OSError, ValueError, AttributeError):
+        if "seven_day" in windows:
+            windows["seven_day"]["yellow"] = week_yellow(windows["seven_day"]["resets_at"], now)
+    except (OSError, ValueError, AttributeError, TypeError):
         return None
     return {"ts": snap.get("ts"), **windows} if windows else None
 

@@ -1,7 +1,7 @@
 import json
 from datetime import UTC, datetime
 
-from dashboard.usage import block_start, ceiling_samples, collect, estimate, limits, weighted
+from dashboard.usage import block_start, ceiling_samples, collect, estimate, limits, week_yellow, weighted
 from tests.conftest import assistant
 
 H = 3600
@@ -92,3 +92,23 @@ def test_limits_from_status_line_snapshot(claude_dir):
     assert limits(claude_dir.root, now) == {"ts": now - 60, "five_hour": five}
     (d / "usage.json").write_text("{bad")
     assert limits(claude_dir.root, now) is None
+
+
+def test_week_yellow_follows_the_reset_weekday():
+    def week(reset: datetime) -> list[float]:  # threshold at noon-ish of each day of the window
+        r = reset.timestamp()
+        return [week_yellow(r, r - 7 * 86400 + d * 86400 + H) for d in range(7)]
+
+    assert week(datetime(2026, 11, 17, 5)) == [10, 30, 50, 70, 70, 70, 90]  # Tue reset: Tue..Mon
+    assert week(datetime(2026, 11, 16, 9)) == [10, 30, 50, 70, 90, 90, 90]  # Mon reset: Mon..Sun
+    assert week(datetime(2026, 11, 14, 9)) == [10, 10, 10, 30, 50, 70, 90]  # Sat reset: Sat..Fri
+
+
+def test_limits_adds_todays_weekly_threshold(claude_dir):
+    reset = datetime(2026, 11, 17, 5).timestamp()
+    now = reset - 5 * 86400 + H  # Thursday of a Tuesday-reset week
+    d = claude_dir.root / "dashboard"
+    d.mkdir(parents=True)
+    week = {"used_percentage": 41.0, "resets_at": reset}
+    (d / "usage.json").write_text(json.dumps({"ts": now, "rate_limits": {"seven_day": week}}))
+    assert limits(claude_dir.root, now)["seven_day"] == {**week, "yellow": 50}

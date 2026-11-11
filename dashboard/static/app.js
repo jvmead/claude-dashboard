@@ -35,11 +35,8 @@ function stateText(r) {
   return r.state === "waiting" ? `waiting · ${r.outstanding}/${r.total_subagents}` : LABEL[r.state];
 }
 
-// Weekly pace: 20% a day (none at the weekend), threshold halfway through each day's budget.
-// Yellow at the threshold, orange 5 points above, red 8 above. Day 0 starts at the reset
-// (Tue 05:00 for James), so Tue..Mon; the weekend holds Friday's thresholds.
-const WEEK_YELLOW = [10, 30, 50, 70, 70, 70, 90];
-
+// Weekly pace: the server works out today's yellow threshold from the reset time (week_yellow
+// in usage.py). Orange is 5 points above it, red 8 above.
 function limitLevel(pct, yellow, orange, red) {
   return pct >= red ? "lim-red" : pct >= orange ? "lim-orange" : pct >= yellow ? "lim-yellow" : "";
 }
@@ -50,8 +47,7 @@ function limitParts(L, now) {
   const f = L.five_hour, w = L.seven_day;
   const parts = [f ? [text(f, "5h"), limitLevel(f.used_percentage, 80, 80, 90), "orange at 80%, red at 90%"] : ["5h: –"]];
   if (w) {
-    const day = Math.min(6, Math.max(0, Math.floor((now - (w.resets_at - 7 * 86400)) / 86400)));
-    const y = WEEK_YELLOW[day];
+    const y = w.yellow;
     parts.push([text(w, "wk"), limitLevel(w.used_percentage, y, y + 5, y + 8),
                 `today: yellow at ${y}%, orange at ${y + 5}%, red at ${y + 8}%`]);
   } else parts.push(["wk: –"]);
