@@ -143,10 +143,10 @@ def _safe_estimate(claude_dir: Path, now: float, ceiling_cache: Path) -> dict:
 
 
 def build_snapshot(claude_dir: Path, sessions_fn: Callable[[], list[LiveSession]], now: float,
-                   ceiling_cache: Path, log_dir: Path | None = None) -> dict:
+                   ceiling_cache: Path, log_dir: Path | None = None, with_usage: bool = True) -> dict:
     snap = {"now": now, "error": None, "sessions": [], "context_limit": CONTEXT_LIMIT,
             "hook_installed": is_installed(claude_dir / "settings.json"),
-            "usage": _safe_estimate(claude_dir, now, ceiling_cache), "peak": peak(now),
+            "usage": _safe_estimate(claude_dir, now, ceiling_cache) if with_usage else None, "peak": peak(now),
             "jobs": [asdict(j) for j in load_jobs(log_dir, now)]}
     try:
         sessions = sessions_fn()

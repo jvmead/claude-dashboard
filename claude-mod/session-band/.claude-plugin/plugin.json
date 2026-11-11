@@ -1,0 +1,6 @@
+{
+  "name": "session-band",
+  "version": "0.1.0",
+  "description": "A band above the prompt naming other Claude sessions that need you (approval or your turn)",
+  "types": "./types/index.d.ts"
+}
