@@ -170,7 +170,7 @@ function renderList(s) {
     bar.append(fill);
     bar.title = `context ${Math.round(100 * r.context_pct)}% of ${kilo(s.context_limit)}`;
     const name = el("b", null, r.title || r.name);
-    if (r.title) { name.append(" "); name.append(el("small", null, r.tag)); }  // kickoff line, else folder
+    if (r.title && r.tag !== r.title) { name.append(" "); name.append(el("small", null, r.tag)); }  // kickoff line, else folder
     name.title = `${r.name} · ${r.cwd}`;
     row.append(el("span", null, open.has(r.session_id) ? "▾" : "▸"), name,
                el("span", "addr", r.name), el("span", `badge s-${r.state}`, stateText(r)), el("span", "action", r.last_action),
