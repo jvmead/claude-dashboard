@@ -40,13 +40,15 @@ body.mini main, body.mini .note, body.mini .jobs { display: none; }
 .job .action { color: var(--muted); }
 .job .idle { text-align: right; color: var(--muted); }
 
-.row { display: grid; grid-template-columns: 16px minmax(90px,150px) 120px 1fr 90px 44px;
+.row { display: grid; grid-template-columns: 16px minmax(120px,320px) 170px 120px 1fr 90px 44px;
        gap: 10px; align-items: center; padding: 7px 12px; border-bottom: 1px solid var(--line);
        cursor: pointer; }
 .row > *, .lane > * { min-width: 0; }
 .row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row:hover { background: var(--open); }
 .row .action { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .addr { font-family: monospace; color: var(--muted); user-select: all;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .idle { text-align: right; color: var(--muted); }
 .bar { height: 6px; background: var(--track); border-radius: 3px; position: relative; }
 .bar i { display: block; height: 6px; border-radius: 3px; background: var(--waiting); }
@@ -57,7 +59,7 @@ body.mini main, body.mini .note, body.mini .jobs { display: none; }
 .lane { display: grid; grid-template-columns: minmax(140px,230px) 1fr minmax(120px,260px);
         gap: 8px; align-items: center; margin-bottom: 4px; }
 .lane .who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lane small { color: var(--muted); }
+.lane small, .row b small { color: var(--muted); font-weight: normal; }
 .lane .what { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 .track { position: relative; height: 14px; background: var(--track); border-radius: 3px; }
 .seg { position: absolute; top: 2px; height: 10px; border-radius: 2px; min-width: 2px; }
@@ -71,7 +73,7 @@ body.mini main, body.mini .note, body.mini .jobs { display: none; }
   .strip { flex-wrap: wrap; }
   .usage { white-space: normal; order: 3; flex-basis: 100%; }
   .row { grid-template-columns: 14px 1fr auto auto; }
-  .row .action, .row .bar { display: none; }
+  .row .action, .row .bar, .row .addr { display: none; }
   .exp { padding-left: 16px; }
   .lane { grid-template-columns: 1fr; }
 }

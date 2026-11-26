@@ -78,6 +78,8 @@ function usageText(u, now) {
   return `5h: ~${pct}% (${u.samples} samples)${left} · ${tail}`;
 }
 
+const short = (t, n = 28) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
+
 function toggleRow(id) {
   open.has(id) ? open.delete(id) : open.add(id);
   store.set("open", [...open]);
@@ -87,8 +89,8 @@ function toggleRow(id) {
 function renderStrip(s) {
   const pills = document.getElementById("pills");
   pills.replaceChildren(...s.sessions.map(r => {
-    const p = el("span", `pill s-${r.state}`, `${r.name} ${GLYPH[r.state]}`);
-    p.title = `${stateText(r)} — ${r.last_action}`;
+    const p = el("span", `pill s-${r.state}`, `${short(r.tag === r.name ? r.title || r.name : r.tag)} ${GLYPH[r.state]}`);
+    p.title = `${r.title || r.name} (${r.tag}) · ${stateText(r)} — ${r.last_action}`;
     p.onclick = () => { document.body.classList.remove("mini"); store.set("mini", false); toggleRow(r.session_id); };
     return p;
   }));
@@ -127,7 +129,7 @@ function flatten(nodes, out = []) {
 
 function renderTimeline(r, now) {
   const box = el("div", "exp");
-  box.append(lane(`${r.name} (parent)`, r.model || "", `ctx ${Math.round(100 * r.context_pct)}%`, track => {
+  box.append(lane(`${r.title || r.name} (parent)`, r.model || "", `ctx ${Math.round(100 * r.context_pct)}%`, track => {
     if (r.outstanding) seg(track, now - TIMELINE_S, now, now, "wait");
     for (const [a, b] of r.parent_busy_segments) seg(track, a, b + 5, now, "run");
   }));
@@ -167,10 +169,11 @@ function renderList(s) {
     fill.style.width = `${Math.min(100, 100 * r.context_pct)}%`;
     bar.append(fill);
     bar.title = `context ${Math.round(100 * r.context_pct)}% of ${kilo(s.context_limit)}`;
-    const name = el("b", null, r.name);
-    name.title = r.cwd;
+    const name = el("b", null, r.title || r.name);
+    if (r.title) { name.append(" "); name.append(el("small", null, r.tag)); }  // kickoff line, else folder
+    name.title = `${r.name} · ${r.cwd}`;
     row.append(el("span", null, open.has(r.session_id) ? "▾" : "▸"), name,
-               el("span", `badge s-${r.state}`, stateText(r)), el("span", "action", r.last_action),
+               el("span", "addr", r.name), el("span", `badge s-${r.state}`, stateText(r)), el("span", "action", r.last_action),
                bar, el("span", "idle", r.busy ? "now" : dur(r.idle_s)));
     rows.push(row);
     if (open.has(r.session_id)) rows.push(renderTimeline(r, s.now));
