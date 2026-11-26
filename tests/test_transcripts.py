@@ -67,3 +67,24 @@ def test_whole_history_not_just_tail(claude_dir):
     blob = {"type": "api-request-blob", "timestamp": "2026-10-18T10:00:30Z", "body": "x" * 600_000}
     p = claude_dir.add_session("s1", [assistant("2026-10-18T10:00:00Z", text="early"), blob])
     assert scan(p)[1][0] == 1792317600.0
+
+
+def test_title_latest_ai_title_and_rename_kept_apart(claude_dir):
+    p = claude_dir.add_session("s1", [{"type": "ai-title", "aiTitle": "first guess"},
+                                      {"type": "ai-title", "aiTitle": "Model eval reruns"}])
+    s = summarize(p)
+    assert (s.title, s.custom_title) == ("Model eval reruns", None)
+    p = claude_dir.add_session("s2", [{"type": "custom-title", "customTitle": "paper draft"},
+                                      {"type": "ai-title", "aiTitle": "later ai title"}])
+    s = summarize(p)
+    assert (s.title, s.custom_title) == ("later ai title", "paper draft")
+
+
+def test_kickoff_tag_is_first_kickoff_args_line(claude_dir):
+    def user(text):
+        return {"type": "user", "message": {"role": "user", "content": text}}
+    kick = ("<command-message>kickoff</command-message>\n<command-name>/kickoff</command-name>\n"
+            "<command-args>forecasting  eval 12\nSecond step of the plan</command-args>")
+    p = claude_dir.add_session("s1", [user("hello"), user(kick), user(kick.replace("12", "99"))])
+    assert summarize(p).kickoff == "eval 12 · forecasting"
+    assert summarize(claude_dir.add_session("s2", [user("no kickoff")])).kickoff is None

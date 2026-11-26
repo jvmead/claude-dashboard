@@ -1,5 +1,6 @@
 """Read Claude Code session transcripts (append-only JSONL, possibly mid-write)."""
 import json
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -16,6 +17,9 @@ class SessionSummary:
     model: str | None
     last_action: str
     last_activity: float
+    title: str | None = None  # Claude Code's own summary of the session
+    custom_title: str | None = None  # set with /rename, wins over title
+    kickoff: str | None = None  # first line of the first /kickoff's args, e.g. "forecasting eval 12"
 
 
 def parse_ts(ts: str) -> float:
@@ -53,6 +57,18 @@ def describe_block(block: dict) -> str | None:
     return None
 
 
+KICKOFF = re.compile(r"<command-name>/kickoff</command-name>\s*<command-args>([^\n<]*)")
+
+
+def kickoff_args(content: object) -> str | None:
+    """A /kickoff's first args line with the project moved last, so the stream and item
+    that tell parallel sessions apart lead: "eval 12 · forecasting". None otherwise."""
+    m = KICKOFF.search(content) if isinstance(content, str) else None
+    words = m.group(1).split() if m else []
+    tag = " ".join(words[1:] + ["·"] + words[:1]) if len(words) > 1 else " ".join(words)
+    return tag[:ACTION_CHARS] or None
+
+
 # path -> (bytes consumed, running summary, activity timestamps). Transcripts are append-only,
 # so each refresh only parses what was written since the last one.
 _scanned: dict[Path, tuple[int, SessionSummary, list[float]]] = {}
@@ -62,6 +78,15 @@ def _apply(rec: dict, summary: SessionSummary, stamps: list[float]) -> None:
     if rec.get("timestamp"):
         summary.last_activity = parse_ts(rec["timestamp"])
         stamps.append(summary.last_activity)
+
+    # session titles: latest of each kind
+    if rec.get("type") == "ai-title" and rec.get("aiTitle"):
+        summary.title = rec["aiTitle"]
+    if rec.get("type") == "custom-title" and rec.get("customTitle"):
+        summary.custom_title = rec["customTitle"]
+    if rec.get("type") == "user" and summary.kickoff is None:
+        summary.kickoff = kickoff_args((rec.get("message") or {}).get("content"))
+
     if rec.get("type") != "assistant":
         return
     msg = rec.get("message") or {}

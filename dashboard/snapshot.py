@@ -84,7 +84,7 @@ def _node_dict(n: SubagentNode, since: float) -> dict:
 
 
 def _base_row(s: LiveSession, now: float) -> dict:
-    return {"session_id": s.session_id, "name": s.name, "cwd": s.cwd, "age_s": now - s.started,
+    return {"session_id": s.session_id, "name": s.name, "title": None, "tag": s.name, "cwd": s.cwd, "age_s": now - s.started,
            "busy": s.busy, "last_action": "no transcript yet", "context_tokens": 0, "context_pct": 0.0,
            "model": None, "idle_s": 0.0, "outstanding": 0, "total_subagents": 0, "max_depth": 0,
            "specialists": 0, "generals": 0, "tokens_last_hour": 0.0, "subagents": [],
@@ -102,6 +102,8 @@ def session_row(claude_dir: Path, s: LiveSession, pending: set[str], now: float)
     nodes = list(walk(roots))
     files = _files(transcript)
     row.update(
+        title=summary.custom_title or summary.title,
+        tag=summary.kickoff or s.name,
         last_action=summary.last_action or "—",
         context_tokens=summary.context_tokens,
         context_pct=summary.context_tokens / CONTEXT_LIMIT,
